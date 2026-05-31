@@ -6,15 +6,22 @@ import { enviarLembretesVencimentoAmanha } from "../_lib/vencimentoEmails.js";
 export default async function handler(req, res) {
   corsLeads(res);
   if (req.method === "OPTIONS") return res.status(200).end();
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Método não permitido." });
-  }
 
   const secret = process.env.CRON_SECRET?.trim();
-  const header = String(req.headers["x-cron-secret"] ?? "").trim();
+  const headerSecret = String(req.headers["x-cron-secret"] ?? "").trim();
+  const authHeader = String(req.headers.authorization ?? "");
+  const bearerSecret =
+    authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
 
-  if (!secret || header !== secret) {
+  const authorized =
+    secret && (headerSecret === secret || bearerSecret === secret);
+
+  if (!authorized) {
     return res.status(401).json({ error: "Não autorizado." });
+  }
+
+  if (req.method !== "POST" && req.method !== "GET") {
+    return res.status(405).json({ error: "Método não permitido." });
   }
 
   try {

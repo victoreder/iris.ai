@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --port 5175",
     "dev:api": "npm start --prefix backend",
+    "dev:vercel": "vercel dev",
     "build": "vite build",
     "preview": "vite preview --port 5175"
   },
