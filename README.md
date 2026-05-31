@@ -23,6 +23,16 @@ Viziom/
 
 No deploy monolito, um único build serve ambos.
 
+## Deploy na Vercel
+
+1. **Project Settings → Build & Deployment → Framework Preset** → selecione **Services**
+2. Configure as variáveis de ambiente (ver `.env.example`)
+3. Domínios: `app.seudominio.com` (painel + `/api/*`) e `go.seudominio.com` (links `/l/*`)
+
+A API de produção roda como **serverless** na pasta `api/` (não usa a pasta `backend/`, que é só para dev local com Express).
+
+Após o deploy, teste: `GET https://seu-dominio.com/api/health`
+
 ## Setup
 
 ### 1. Supabase (projeto novo)

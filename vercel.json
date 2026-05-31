@@ -1,8 +1,12 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "npm install --include=dev",
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
+  "experimentalServices": {
+    "frontend": {
+      "framework": "vite",
+      "entrypoint": ".",
+      "routePrefix": "/"
+    }
+  },
   "functions": {
     "api/leads/webhook-evolution.js": {
       "maxDuration": 60
