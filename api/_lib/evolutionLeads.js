@@ -73,6 +73,12 @@ export async function evolutionConnectInstance(instanceName) {
   });
 }
 
+export async function evolutionDeleteInstance(instanceName) {
+  return evolutionFetch(`/instance/delete/${encodeURIComponent(instanceName)}`, {
+    method: "DELETE",
+  });
+}
+
 export async function evolutionConnectionState(instanceName) {
   return evolutionFetch(
     `/instance/connectionState/${encodeURIComponent(instanceName)}`,

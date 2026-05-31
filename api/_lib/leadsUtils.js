@@ -82,7 +82,56 @@ export function slugifyLeadLink(input) {
 }
 
 export function isValidLeadSlug(slug) {
-  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) && slug.length >= 2;
+  const s = String(slug ?? "");
+  if (
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s)
+  ) {
+    return true;
+  }
+  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(s) && s.length >= 2;
+}
+
+export function generateLeadLinkSlug() {
+  return crypto.randomUUID();
+}
+
+export async function ensureUniqueLeadLinkSlug(supabase) {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const candidate = generateLeadLinkSlug();
+    const { data } = await supabase
+      .from("leads_links")
+      .select("id")
+      .eq("slug", candidate)
+      .maybeSingle();
+    if (!data) return candidate;
+  }
+  throw new Error("Não foi possível gerar um slug único.");
+}
+
+export function buildInstanceName(input, fallbackNome) {
+  const raw = String(input ?? "").trim() || String(fallbackNome ?? "").trim();
+  return slugifyLeadLink(raw).replace(/-/g, "_");
+}
+
+export function isValidInstanceName(name) {
+  return typeof name === "string" && name.length >= 2;
+}
+
+export async function ensureUniqueInstanceName(supabase, baseName) {
+  let attempt = 0;
+  while (attempt < 100) {
+    const suffix = attempt === 0 ? "" : `_${attempt + 1}`;
+    const maxBase = Math.max(2, 64 - suffix.length);
+    const candidate = `${baseName.slice(0, maxBase)}${suffix}`;
+    const { data } = await supabase
+      .from("leads_instancias_whatsapp")
+      .select("id")
+      .eq("instance_name", candidate)
+      .maybeSingle();
+    if (!data) return candidate;
+    attempt += 1;
+  }
+  throw new Error("Não foi possível gerar um nome de instância único.");
 }
 
 export async function ensureUniqueLeadSlug(supabase, baseSlug) {

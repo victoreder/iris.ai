@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { collectAttribution } from "@/lib/collectAttribution";
 import { registerLeadClick } from "@/lib/registerClick";
 
@@ -10,8 +10,12 @@ declare global {
   }
 }
 
+const META_WAIT_MS = 5000;
+
 export function LeadRedirect() {
   const { slug } = useParams<{ slug: string }>();
+  const [searchParams] = useSearchParams();
+  const metaMode = searchParams.get("meta") === "1";
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -22,7 +26,7 @@ export function LeadRedirect() {
     }
 
     const run = async () => {
-      if (window.__goRedirectPromise) {
+      if (!metaMode && window.__goRedirectPromise) {
         const result = await window.__goRedirectPromise;
         if (!result.ok) {
           setError(result.error ?? "Não foi possível abrir o WhatsApp.");
@@ -31,7 +35,24 @@ export function LeadRedirect() {
       }
 
       const attribution = collectAttribution();
-      const result = await registerLeadClick(s, attribution);
+      const registerPromise = registerLeadClick(s, attribution, {
+        metaPageView: metaMode,
+      });
+
+      if (metaMode) {
+        const [, result] = await Promise.all([
+          new Promise<void>((resolve) => setTimeout(resolve, META_WAIT_MS)),
+          registerPromise,
+        ]);
+        if (!result.ok || !result.waUrl) {
+          setError(result.error ?? "Não foi possível abrir o WhatsApp.");
+          return;
+        }
+        window.location.replace(result.waUrl);
+        return;
+      }
+
+      const result = await registerPromise;
       if (!result.ok || !result.waUrl) {
         setError(result.error ?? "Não foi possível abrir o WhatsApp.");
         return;
@@ -40,7 +61,7 @@ export function LeadRedirect() {
     };
 
     void run();
-  }, [slug]);
+  }, [slug, metaMode]);
 
   return (
     <div
@@ -52,16 +73,49 @@ export function LeadRedirect() {
         justifyContent: "center",
         fontFamily: "system-ui, sans-serif",
         padding: 24,
-        background: "#fafafa",
+        background: "#f8f9fc",
       }}
     >
-      <img
-        src="https://xnfmuxuvnkhwoymxgmbw.supabase.co/storage/v1/object/public/versoes/LOGO.png"
-        alt="HubLabel"
-        style={{ height: 48, marginBottom: 24 }}
-      />
+      <div
+        style={{
+          height: 48,
+          width: 48,
+          borderRadius: 12,
+          background: "#3F37FF",
+          color: "#fff",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 24,
+          fontWeight: 700,
+          marginBottom: 24,
+        }}
+      >
+        V
+      </div>
       {error ? (
         <p style={{ color: "#b91c1c", textAlign: "center", maxWidth: 360 }}>{error}</p>
+      ) : metaMode ? (
+        <>
+          <p style={{ color: "#171717", fontSize: 18, fontWeight: 600, textAlign: "center" }}>
+            Por favor, aguarde alguns segundos.
+          </p>
+          <p style={{ color: "#525252", marginTop: 8, textAlign: "center", maxWidth: 360 }}>
+            Estamos localizando um atendente disponível…
+          </p>
+          <div
+            style={{
+              marginTop: 24,
+              width: 32,
+              height: 32,
+              border: "3px solid #3F37FF",
+              borderTopColor: "transparent",
+              borderRadius: "50%",
+              animation: "spin 0.8s linear infinite",
+            }}
+          />
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        </>
       ) : (
         <>
           <p style={{ color: "#525252" }}>Redirecionando para o WhatsApp…</p>
@@ -70,7 +124,7 @@ export function LeadRedirect() {
               marginTop: 16,
               width: 32,
               height: 32,
-              border: "3px solid #ffd323",
+              border: "3px solid #3F37FF",
               borderTopColor: "transparent",
               borderRadius: "50%",
               animation: "spin 0.8s linear infinite",

@@ -1,11 +1,23 @@
 import { getSupabase } from "../_lib.js";
+import { requireContaAuth } from "../_lib/auth.js";
 import {
   evolutionCreateInstance,
   evolutionSetWebhook,
   getLeadsWebhookUrl,
 } from "../_lib/evolutionLeads.js";
-import { corsLeads, slugifyLeadLink } from "../_lib/leadsUtils.js";
+import {
+  buildInstanceName,
+  corsLeads,
+  ensureUniqueInstanceName,
+  isValidInstanceName,
+} from "../_lib/leadsUtils.js";
 import { ensureContatoInicialEtapa } from "../_lib/leadsJornada.js";
+import { assertCanCreateWhatsApp } from "../_lib/planoLimites.js";
+
+function isEvolutionNameTakenError(err) {
+  const msg = String(err?.message ?? "").toLowerCase();
+  return err?.status === 403 && msg.includes("already in use");
+}
 
 export const config = { api: { bodyParser: { sizeLimit: "64kb" } } };
 
@@ -16,29 +28,31 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Método não permitido." });
   }
 
+  const auth = await requireContaAuth(req, res, { minPapel: "admin" });
+  if (!auth) return;
+
   try {
     const { nome, instanceName: instanceInput } = req.body || {};
     const nomeTrim = String(nome ?? "").trim();
     if (!nomeTrim) return res.status(400).json({ error: "Nome é obrigatório." });
 
-    const instanceName = slugifyLeadLink(instanceInput || nomeTrim).replace(/-/g, "_");
-    if (!instanceName || instanceName.length < 2) {
-      return res.status(400).json({ error: "Nome da instância inválido." });
+    const baseInstanceName = buildInstanceName(instanceInput, nomeTrim);
+    if (!isValidInstanceName(baseInstanceName)) {
+      return res.status(400).json({
+        error: "Nome da instância inválido — use pelo menos 2 letras ou números.",
+      });
     }
 
     const supabase = getSupabase();
+    await assertCanCreateWhatsApp(supabase, auth.contaId);
+    const instanceName = await ensureUniqueInstanceName(supabase, baseInstanceName);
 
-    const { data: existing } = await supabase
-      .from("leads_instancias_whatsapp")
-      .select("id")
-      .eq("instance_name", instanceName)
-      .maybeSingle();
-
-    if (existing) {
-      return res.status(400).json({ error: "Já existe uma instância com este nome." });
+    try {
+      await evolutionCreateInstance(instanceName);
+    } catch (e) {
+      if (!isEvolutionNameTakenError(e)) throw e;
+      console.warn("criar-instancia: reutilizando instância existente na Evolution:", instanceName);
     }
-
-    await evolutionCreateInstance(instanceName);
 
     let webhookConfigurado = false;
     let webhookErro = null;
@@ -53,6 +67,7 @@ export default async function handler(req, res) {
     const { data: row, error: errInsert } = await supabase
       .from("leads_instancias_whatsapp")
       .insert({
+        conta_id: auth.contaId,
         nome: nomeTrim,
         instance_name: instanceName,
         status: "conectando",
@@ -69,7 +84,7 @@ export default async function handler(req, res) {
     }
 
     try {
-      await ensureContatoInicialEtapa(supabase, row.id);
+      await ensureContatoInicialEtapa(supabase, row.id, auth.contaId);
     } catch (e) {
       console.error("criar-instancia etapa inicial:", e);
     }
@@ -83,6 +98,7 @@ export default async function handler(req, res) {
     });
   } catch (err) {
     console.error("criar-instancia:", err);
-    return res.status(500).json({ error: err?.message ?? "Erro interno." });
+    const status = err?.statusCode && err.statusCode >= 400 ? err.statusCode : 500;
+    return res.status(status).json({ error: err?.message ?? "Erro interno." });
   }
 }

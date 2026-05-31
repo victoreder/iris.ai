@@ -1,4 +1,5 @@
 import { getSupabase } from "../_lib.js";
+import { requireContaAuth } from "../_lib/auth.js";
 import { sendMetaTestEvent } from "../_lib/metaConversions.js";
 import { corsLeads } from "../_lib/leadsUtils.js";
 import { logLeadsEvent } from "../_lib/leadsLogger.js";
@@ -12,14 +13,18 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Método não permitido." });
   }
 
+  const auth = await requireContaAuth(req, res, { minPapel: "admin" });
+  if (!auth) return;
+
   try {
     const supabase = getSupabase();
-    const body = await sendMetaTestEvent();
+    const body = await sendMetaTestEvent(auth.contaId);
     await logLeadsEvent({
       supabase,
+      contaId: auth.contaId,
       tipo: "meta",
       nivel: "sucesso",
-      mensagem: "Evento de teste enviado à Meta (botão admin)",
+      mensagem: "Evento de teste enviado à Meta",
       detalhes: { result: body },
     });
     return res.status(200).json({ success: true, result: body });
@@ -28,6 +33,7 @@ export default async function handler(req, res) {
     const supabase = getSupabase();
     await logLeadsEvent({
       supabase,
+      contaId: auth.contaId,
       tipo: "meta",
       nivel: "erro",
       mensagem: `Falha no teste Meta: ${err?.message}`,

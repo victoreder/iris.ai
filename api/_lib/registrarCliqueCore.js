@@ -63,6 +63,7 @@ export async function registrarCliqueCore(slugRaw, attribution, { supabase: exis
         slug,
         mensagem_inicial,
         ativo,
+        conta_id,
         instancia_id,
         leads_instancias_whatsapp (
           id,
@@ -104,6 +105,7 @@ export async function registrarCliqueCore(slugRaw, attribution, { supabase: exis
       nivel: "erro",
       mensagem: "Clique sem WhatsApp conectado (telefone da instância ausente)",
       linkId: link.id,
+      contaId: link.conta_id,
       instanceName: instancia.instance_name,
       detalhes: { slug: slugTrim, instancia_id: instancia.id },
     });
@@ -111,7 +113,7 @@ export async function registrarCliqueCore(slugRaw, attribution, { supabase: exis
       ok: false,
       status: 400,
       error:
-        "WhatsApp ainda sem número salvo. No admin, abra WhatsApp → clique em atualizar status (ícone refresh) após conectar.",
+        "WhatsApp ainda sem número salvo. No app, abra Channels → clique em atualizar status após conectar.",
     };
   }
 
@@ -121,6 +123,7 @@ export async function registrarCliqueCore(slugRaw, attribution, { supabase: exis
 
   const row = {
     id: trackingId,
+    conta_id: link.conta_id,
     link_id: link.id,
     instancia_id: instancia.id,
     utm_source: attribution.utmSource ? String(attribution.utmSource).trim() : null,
@@ -152,6 +155,7 @@ export async function registrarCliqueCore(slugRaw, attribution, { supabase: exis
       nivel: "erro",
       mensagem: "Falha ao salvar clique no banco",
       linkId: link.id,
+      contaId: link.conta_id,
       cliqueId: trackingId,
       detalhes: { error: errInsert.message },
     });

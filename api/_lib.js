@@ -1,15 +1,15 @@
 import { createClient } from "@supabase/supabase-js";
-
-const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env;
+import { getSupabaseEnv } from "./_lib/env.js";
 
 let supabaseClient = null;
 
 export function getSupabase() {
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error("Configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY.");
+  const { url, serviceRoleKey } = getSupabaseEnv();
+  if (!url || !serviceRoleKey) {
+    throw new Error("Configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY no .env da raiz.");
   }
   if (!supabaseClient) {
-    supabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    supabaseClient = createClient(url, serviceRoleKey);
   }
   return supabaseClient;
 }

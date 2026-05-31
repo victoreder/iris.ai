@@ -22,7 +22,7 @@ export function parsePalavrasChave(raw) {
   return [];
 }
 
-export async function ensureContatoInicialEtapa(supabase, instanciaId) {
+export async function ensureContatoInicialEtapa(supabase, instanciaId, contaId) {
   const { data: existing } = await supabase
     .from("leads_jornada_etapas")
     .select("id")
@@ -35,6 +35,7 @@ export async function ensureContatoInicialEtapa(supabase, instanciaId) {
   const { data, error } = await supabase
     .from("leads_jornada_etapas")
     .insert({
+      conta_id: contaId,
       instancia_id: instanciaId,
       nome: "Contato Inicial",
       posicao: 1,

@@ -1,6 +1,7 @@
 import path from "path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 
 function injectGoBackendMeta() {
   return {
@@ -18,7 +19,7 @@ function injectGoBackendMeta() {
 export default defineConfig({
   base: "/",
   build: { outDir: "dist", emptyOutDir: true },
-  plugins: [react(), injectGoBackendMeta()],
+  plugins: [react(), tailwindcss(), injectGoBackendMeta()],
   resolve: {
     alias: { "@": path.resolve(__dirname, "./src") },
   },

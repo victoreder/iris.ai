@@ -1,9 +1,8 @@
 import { getSupabase } from "../_lib.js";
+import { requireContaAuth } from "../_lib/auth.js";
 import {
   corsLeads,
-  ensureUniqueLeadSlug,
-  isValidLeadSlug,
-  slugifyLeadLink,
+  ensureUniqueLeadLinkSlug,
 } from "../_lib/leadsUtils.js";
 
 export const config = { api: { bodyParser: { sizeLimit: "64kb" } } };
@@ -19,8 +18,11 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Método não permitido." });
   }
 
+  const auth = await requireContaAuth(req, res, { minPapel: "membro" });
+  if (!auth) return;
+
   try {
-    const { nome, slug: slugInput, instanciaId, mensagemInicial, createdBy } = req.body || {};
+    const { nome, instanciaId, mensagemInicial } = req.body || {};
     const nomeTrim = String(nome ?? "").trim();
     const mensagem = String(mensagemInicial ?? "").trim();
     const instancia = String(instanciaId ?? "").trim();
@@ -29,36 +31,31 @@ export default async function handler(req, res) {
     if (!mensagem) return res.status(400).json({ error: "Mensagem inicial é obrigatória." });
     if (!instancia) return res.status(400).json({ error: "Selecione um WhatsApp." });
 
-    const baseSlug = slugifyLeadLink(slugInput || nomeTrim);
-    if (!isValidLeadSlug(baseSlug)) {
-      return res.status(400).json({
-        error: "Slug inválido. Use letras minúsculas, números e hífens (mín. 2 caracteres).",
-      });
-    }
-
     const supabase = getSupabase();
 
     const { data: inst, error: errInst } = await supabase
       .from("leads_instancias_whatsapp")
-      .select("id, telefone, status")
+      .select("id, telefone, status, conta_id")
       .eq("id", instancia)
+      .eq("conta_id", auth.contaId)
       .maybeSingle();
 
     if (errInst || !inst) {
       return res.status(400).json({ error: "Instância WhatsApp não encontrada." });
     }
 
-    const slug = await ensureUniqueLeadSlug(supabase, baseSlug);
+    const slug = await ensureUniqueLeadLinkSlug(supabase);
 
     const { data: inserted, error: errInsert } = await supabase
       .from("leads_links")
       .insert({
+        conta_id: auth.contaId,
         nome: nomeTrim,
         slug,
         instancia_id: instancia,
         mensagem_inicial: mensagem,
         ativo: true,
-        created_by: createdBy || null,
+        created_by: auth.userId,
       })
       .select("id, nome, slug, instancia_id, mensagem_inicial, ativo, created_at")
       .single();

@@ -1,4 +1,5 @@
 import { getSupabase } from "../_lib.js";
+import { requireContaAuth } from "../_lib/auth.js";
 import { corsLeads } from "../_lib/leadsUtils.js";
 
 export const config = { api: { bodyParser: { sizeLimit: "32kb" } } };
@@ -10,13 +11,20 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Método não permitido." });
   }
 
+  const auth = await requireContaAuth(req, res, { minPapel: "admin" });
+  if (!auth) return;
+
   try {
     const { linkId } = req.body || {};
     const id = String(linkId ?? "").trim();
     if (!id) return res.status(400).json({ error: "linkId é obrigatório." });
 
     const supabase = getSupabase();
-    const { error } = await supabase.from("leads_links").delete().eq("id", id);
+    const { error } = await supabase
+      .from("leads_links")
+      .delete()
+      .eq("id", id)
+      .eq("conta_id", auth.contaId);
 
     if (error) {
       console.error("excluir-link:", error);

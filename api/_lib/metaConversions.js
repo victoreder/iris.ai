@@ -16,9 +16,18 @@ function normalizePhone(phone) {
   return sha256(d);
 }
 
-async function getLeadsConfig() {
+async function getLeadsConfig(contaId) {
   const supabase = getSupabase();
-  const { data, error } = await supabase.from("leads_config").select("*").limit(1).maybeSingle();
+  if (!contaId) {
+    const { data, error } = await supabase.from("leads_config").select("*").limit(1).maybeSingle();
+    if (error) throw error;
+    return data;
+  }
+  const { data, error } = await supabase
+    .from("leads_config")
+    .select("*")
+    .eq("conta_id", contaId)
+    .maybeSingle();
   if (error) throw error;
   return data;
 }
@@ -42,7 +51,7 @@ export async function sendMetaConversionEvent({
   supabase: existingSupabase = null,
 }) {
   const supabase = existingSupabase ?? getSupabase();
-  const config = await getLeadsConfig();
+  const config = await getLeadsConfig(clique.conta_id);
   const pixelId = String(config?.meta_pixel_id ?? "").trim();
   const accessToken = String(config?.meta_access_token ?? "").trim();
 
@@ -223,8 +232,8 @@ export async function sendMetaForEtapa({ supabase, clique, link, etapa, force = 
 }
 
 /** Evento de teste manual (admin). */
-export async function sendMetaTestEvent() {
-  const config = await getLeadsConfig();
+export async function sendMetaTestEvent(contaId) {
+  const config = await getLeadsConfig(contaId);
   const pixelId = String(config?.meta_pixel_id ?? "").trim();
   const accessToken = String(config?.meta_access_token ?? "").trim();
   const testCode = String(config?.meta_test_event_code ?? "").trim();
@@ -242,7 +251,7 @@ export async function sendMetaTestEvent() {
         action_source: "website",
         user_data: {
           client_ip_address: "127.0.0.1",
-          client_user_agent: "HubLabel-Leads-Test",
+          client_user_agent: "Viziom-Leads-Test",
         },
       },
     ],

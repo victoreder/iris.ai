@@ -10,7 +10,8 @@ export interface RegisterClickResult {
 
 export async function registerLeadClick(
   slug: string,
-  attribution: AttributionData
+  attribution: AttributionData,
+  options?: { metaPageView?: boolean }
 ): Promise<RegisterClickResult> {
   if (!backendBase) {
     return { ok: false, error: "Backend não configurado." };
@@ -21,6 +22,7 @@ export async function registerLeadClick(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       slug,
+      metaPageView: options?.metaPageView === true,
       utmSource: attribution.utmSource,
       utmMedium: attribution.utmMedium,
       utmCampaign: attribution.utmCampaign,

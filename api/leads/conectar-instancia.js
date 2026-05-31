@@ -1,6 +1,7 @@
 import { getSupabase } from "../_lib.js";
-import { evolutionConnectInstance } from "../_lib/evolutionLeads.js";
+import { requireContaAuth } from "../_lib/auth.js";
 import { corsLeads } from "../_lib/leadsUtils.js";
+import { createQrShareToken, fetchFreshQrcode } from "../_lib/qrShare.js";
 
 export default async function handler(req, res) {
   corsLeads(res);
@@ -8,6 +9,9 @@ export default async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Método não permitido." });
   }
+
+  const auth = await requireContaAuth(req, res, { minPapel: "admin" });
+  if (!auth) return;
 
   try {
     const instanciaId = String(req.query?.instanciaId ?? "").trim();
@@ -20,29 +24,28 @@ export default async function handler(req, res) {
       .from("leads_instancias_whatsapp")
       .select("id, instance_name, status")
       .eq("id", instanciaId)
+      .eq("conta_id", auth.contaId)
       .maybeSingle();
 
     if (errInst || !inst) {
       return res.status(404).json({ error: "Instância não encontrada." });
     }
 
-    const data = await evolutionConnectInstance(inst.instance_name);
-
-    const qrcode =
-      data?.qrcode?.base64 ||
-      data?.base64 ||
-      data?.code ||
-      (typeof data?.qrcode === "string" ? data.qrcode : null);
+    const qrcode = await fetchFreshQrcode(inst.instance_name);
 
     await supabase
       .from("leads_instancias_whatsapp")
       .update({ status: "conectando", updated_at: new Date().toISOString() })
       .eq("id", instanciaId);
 
+    const { shareUrl } = await createQrShareToken(supabase, instanciaId);
+
     return res.status(200).json({
       success: true,
       qrcode,
-      pairingCode: data?.pairingCode || null,
+      qrCode: qrcode,
+      base64: qrcode,
+      shareUrl,
     });
   } catch (err) {
     console.error("conectar-instancia:", err);

@@ -1,0 +1,138 @@
+export type ContaPapel = "admin" | "membro" | "visualizador";
+
+export type StatusLeadsInstancia = "pendente" | "conectando" | "conectado" | "desconectado";
+export type StatusLeadClique = "aguardando" | "convertido" | "expirado";
+export type LeadsLogTipo = "clique" | "webhook" | "meta";
+export type LeadsLogNivel = "info" | "sucesso" | "erro" | "aviso";
+
+export interface Conta {
+  id: string;
+  nome: string;
+  slug: string;
+  plano_id: string | null;
+  status: "ativa" | "suspensa" | "cancelada";
+  email_contato: string | null;
+  telefone: string | null;
+  onboarding_pendente: boolean;
+  data_vencimento: string | null;
+  lembrete_vencimento_para?: string | null;
+  created_at: string;
+  updated_at: string;
+  planos?: import("./usuario").Plano;
+}
+
+export interface Perfil {
+  id: string;
+  nome: string | null;
+  email: string | null;
+  created_at: string;
+}
+
+export interface ContaMembro {
+  id: string;
+  conta_id: string;
+  user_id: string;
+  papel: ContaPapel;
+  created_at: string;
+  contas?: Conta;
+}
+
+export interface LeadsConfig {
+  id: string;
+  conta_id: string;
+  meta_pixel_id: string | null;
+  meta_access_token: string | null;
+  meta_test_event_code: string | null;
+  evento_padrao: string;
+  updated_at: string;
+}
+
+export interface LeadsInstanciaWhatsapp {
+  id: string;
+  conta_id: string;
+  nome: string;
+  instance_name: string;
+  telefone: string | null;
+  status: StatusLeadsInstancia;
+  webhook_configurado: boolean;
+  webhook_erro: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LeadsLink {
+  id: string;
+  conta_id: string;
+  nome: string;
+  slug: string;
+  instancia_id: string;
+  mensagem_inicial: string;
+  ativo: boolean;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface LeadsJornadaEtapa {
+  id: string;
+  conta_id: string;
+  instancia_id: string;
+  nome: string;
+  posicao: number;
+  palavras_chave: string[];
+  evento_meta: string;
+  primeiro_contato: boolean;
+  representa_venda: boolean;
+  valor_venda: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LeadsClique {
+  id: string;
+  conta_id: string;
+  link_id: string | null;
+  instancia_id: string | null;
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  utm_content: string | null;
+  utm_term: string | null;
+  fbclid: string | null;
+  gclid: string | null;
+  ttclid: string | null;
+  referrer: string | null;
+  landing_url: string | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  device_type: string | null;
+  browser: string | null;
+  os: string | null;
+  fbp: string | null;
+  fbc: string | null;
+  status: StatusLeadClique;
+  telefone_lead: string | null;
+  mensagem_recebida: string | null;
+  convertido_at: string | null;
+  meta_enviado: boolean;
+  meta_event_id: string | null;
+  meta_erro: string | null;
+  meta_enviado_at: string | null;
+  etapa_id: string | null;
+  etapa_atualizada_at: string | null;
+  created_at: string;
+  leads_links?: Pick<LeadsLink, "id" | "nome" | "slug" | "instancia_id"> | null;
+  leads_jornada_etapas?: Pick<LeadsJornadaEtapa, "id" | "nome" | "representa_venda"> | null;
+}
+
+export interface LeadsLog {
+  id: string;
+  conta_id: string | null;
+  tipo: LeadsLogTipo;
+  nivel: LeadsLogNivel;
+  mensagem: string;
+  detalhes: Record<string, unknown> | null;
+  clique_id: string | null;
+  link_id: string | null;
+  instance_name: string | null;
+  created_at: string;
+}

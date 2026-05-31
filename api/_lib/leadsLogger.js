@@ -19,11 +19,13 @@ export async function logLeadsEvent({
   cliqueId = null,
   linkId = null,
   instanceName = null,
+  contaId = null,
   supabase: existingSupabase = null,
 }) {
   try {
     const supabase = existingSupabase ?? getSupabase();
     const row = {
+      conta_id: contaId || null,
       tipo,
       nivel,
       mensagem: String(mensagem ?? "").slice(0, 2000),

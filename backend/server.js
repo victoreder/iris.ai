@@ -1,12 +1,8 @@
-import dotenv from "dotenv";
-import path from "path";
-import { fileURLToPath } from "url";
+import "./load-env.js";
 import express from "express";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.join(__dirname, "../.env") });
-dotenv.config({ path: path.join(__dirname, ".env") });
 import cors from "cors";
+
+import { wrapApiHandler, attachApiErrorLogger } from "../api/_lib/apiLogger.js";
 
 import leadsRegistrarCliqueHandler from "../api/leads/registrar-clique.js";
 import leadsRedirecionarHandler from "../api/leads/redirecionar.js";
@@ -15,43 +11,60 @@ import leadsCriarLinkHandler from "../api/leads/criar-link.js";
 import leadsAtualizarLinkHandler from "../api/leads/atualizar-link.js";
 import leadsExcluirLinkHandler from "../api/leads/excluir-link.js";
 import leadsCriarInstanciaHandler from "../api/leads/criar-instancia.js";
+import leadsExcluirInstanciaHandler from "../api/leads/excluir-instancia.js";
 import leadsConfigurarWebhookHandler from "../api/leads/configurar-webhook-instancia.js";
 import leadsConectarInstanciaHandler from "../api/leads/conectar-instancia.js";
+import leadsQrPublicHandler from "../api/leads/qr-public.js";
 import leadsStatusInstanciaHandler from "../api/leads/status-instancia.js";
 import leadsSalvarConfigMetaHandler from "../api/leads/salvar-config-meta.js";
 import leadsTestarMetaHandler from "../api/leads/testar-meta.js";
 import leadsWebhookUrlHandler from "../api/leads/webhook-url.js";
 import leadsAtualizarEtapaLeadHandler from "../api/leads/atualizar-etapa-lead.js";
+import adminCriarClienteHandler from "../api/admin/criar-cliente.js";
+import adminAtualizarContaHandler from "../api/admin/atualizar-conta.js";
+import adminRegistrarPagamentoHandler from "../api/admin/registrar-pagamento.js";
+import adminImpersonarHandler from "../api/admin/impersonar.js";
+import contaAdicionarMembroHandler from "../api/conta/adicionar-membro.js";
+import cronVerificarVencimentosHandler from "../api/cron/verificar-vencimentos.js";
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3333;
 
 app.use(cors());
 app.use(express.json({ limit: "512kb" }));
+app.use(attachApiErrorLogger);
 
 app.get("/health", (_req, res) => {
-  res.json({ ok: true, service: "hublabel-tracking-api" });
+  res.json({ ok: true, service: "viziom-api" });
 });
 
-app.post("/api/leads/registrar-clique", (req, res) => leadsRegistrarCliqueHandler(req, res));
-app.get("/api/leads/redirecionar", (req, res) => leadsRedirecionarHandler(req, res));
-app.post("/api/leads/webhook-evolution", (req, res) => leadsWebhookEvolutionHandler(req, res));
-app.post("/api/leads/criar-link", (req, res) => leadsCriarLinkHandler(req, res));
-app.post("/api/leads/atualizar-link", (req, res) => leadsAtualizarLinkHandler(req, res));
-app.post("/api/leads/excluir-link", (req, res) => leadsExcluirLinkHandler(req, res));
-app.post("/api/leads/criar-instancia", (req, res) => leadsCriarInstanciaHandler(req, res));
-app.post("/api/leads/configurar-webhook-instancia", (req, res) =>
-  leadsConfigurarWebhookHandler(req, res)
-);
-app.get("/api/leads/conectar-instancia", (req, res) => leadsConectarInstanciaHandler(req, res));
-app.get("/api/leads/status-instancia", (req, res) => leadsStatusInstanciaHandler(req, res));
-app.post("/api/leads/salvar-config-meta", (req, res) => leadsSalvarConfigMetaHandler(req, res));
-app.post("/api/leads/testar-meta", (req, res) => leadsTestarMetaHandler(req, res));
-app.get("/api/leads/webhook-url", (req, res) => leadsWebhookUrlHandler(req, res));
-app.post("/api/leads/atualizar-etapa-lead", (req, res) =>
-  leadsAtualizarEtapaLeadHandler(req, res)
-);
+const post = (path, handler) => app.post(path, wrapApiHandler(handler));
+const get = (path, handler) => app.get(path, wrapApiHandler(handler));
+
+post("/api/leads/registrar-clique", leadsRegistrarCliqueHandler);
+get("/api/leads/redirecionar", leadsRedirecionarHandler);
+post("/api/leads/webhook-evolution", leadsWebhookEvolutionHandler);
+post("/api/leads/criar-link", leadsCriarLinkHandler);
+post("/api/leads/atualizar-link", leadsAtualizarLinkHandler);
+post("/api/leads/excluir-link", leadsExcluirLinkHandler);
+post("/api/leads/criar-instancia", leadsCriarInstanciaHandler);
+post("/api/leads/excluir-instancia", leadsExcluirInstanciaHandler);
+post("/api/leads/configurar-webhook-instancia", leadsConfigurarWebhookHandler);
+get("/api/leads/conectar-instancia", leadsConectarInstanciaHandler);
+get("/api/leads/qr-public", leadsQrPublicHandler);
+get("/api/leads/status-instancia", leadsStatusInstanciaHandler);
+post("/api/leads/salvar-config-meta", leadsSalvarConfigMetaHandler);
+post("/api/leads/testar-meta", leadsTestarMetaHandler);
+get("/api/leads/webhook-url", leadsWebhookUrlHandler);
+post("/api/leads/atualizar-etapa-lead", leadsAtualizarEtapaLeadHandler);
+
+post("/api/admin/criar-cliente", adminCriarClienteHandler);
+post("/api/admin/atualizar-conta", adminAtualizarContaHandler);
+post("/api/admin/registrar-pagamento", adminRegistrarPagamentoHandler);
+post("/api/admin/impersonar", adminImpersonarHandler);
+post("/api/conta/adicionar-membro", contaAdicionarMembroHandler);
+post("/api/cron/verificar-vencimentos", cronVerificarVencimentosHandler);
 
 app.listen(PORT, () => {
-  console.log(`HubLabel Tracking API em http://localhost:${PORT}`);
+  console.log(`Viziom API em http://localhost:${PORT}`);
 });

@@ -7,6 +7,9 @@
   apiBase = apiBase.replace(/\/+$/, "");
   if (!apiBase) return;
 
+  var params = new URLSearchParams(location.search);
+  if (params.get("meta") === "1") return;
+
   if (window.__goRedirectStarted) return;
   window.__goRedirectStarted = true;
 
@@ -15,7 +18,6 @@
     return m ? decodeURIComponent(m[1]) : null;
   }
 
-  var params = new URLSearchParams(location.search);
   var payload = {
     slug: slug,
     utmSource: params.get("utm_source"),

@@ -1,4 +1,5 @@
 import { getSupabase } from "../_lib.js";
+import { requireContaAuth } from "../_lib/auth.js";
 import { sendMetaForEtapa } from "../_lib/metaConversions.js";
 import { corsLeads } from "../_lib/leadsUtils.js";
 
@@ -10,6 +11,9 @@ export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Método não permitido." });
   }
+
+  const auth = await requireContaAuth(req, res, { minPapel: "membro" });
+  if (!auth) return;
 
   try {
     const { cliqueId, etapaId } = req.body || {};
@@ -26,6 +30,7 @@ export default async function handler(req, res) {
       .from("leads_cliques")
       .select("*, leads_links(id, slug, nome, instancia_id)")
       .eq("id", id)
+      .eq("conta_id", auth.contaId)
       .maybeSingle();
 
     if (errClique || !clique) {
@@ -36,6 +41,7 @@ export default async function handler(req, res) {
       .from("leads_jornada_etapas")
       .select("*")
       .eq("id", etapa)
+      .eq("conta_id", auth.contaId)
       .maybeSingle();
 
     if (errEtapa || !etapaRow) {

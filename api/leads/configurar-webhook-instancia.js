@@ -1,4 +1,5 @@
 import { getSupabase } from "../_lib.js";
+import { requireContaAuth } from "../_lib/auth.js";
 import { evolutionSetWebhook, getLeadsWebhookUrl } from "../_lib/evolutionLeads.js";
 import { corsLeads } from "../_lib/leadsUtils.js";
 
@@ -11,6 +12,9 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Método não permitido." });
   }
 
+  const auth = await requireContaAuth(req, res, { minPapel: "admin" });
+  if (!auth) return;
+
   try {
     const { instanciaId } = req.body || {};
     const id = String(instanciaId ?? "").trim();
@@ -21,6 +25,7 @@ export default async function handler(req, res) {
       .from("leads_instancias_whatsapp")
       .select("id, instance_name")
       .eq("id", id)
+      .eq("conta_id", auth.contaId)
       .maybeSingle();
 
     if (errInst || !inst) {

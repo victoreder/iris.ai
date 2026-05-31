@@ -2,6 +2,8 @@ import {
   attributionFromRequest,
   registrarCliqueCore,
 } from "../_lib/registrarCliqueCore.js";
+import { sendMetaConversionEvent } from "../_lib/metaConversions.js";
+import { getSupabase } from "../_lib.js";
 import { corsLeads } from "../_lib/leadsUtils.js";
 
 export const config = { api: { bodyParser: { sizeLimit: "64kb" } } };
@@ -35,6 +37,28 @@ export default async function handler(req, res) {
 
     if (!result.ok) {
       return res.status(result.status).json({ error: result.error });
+    }
+
+    if (body.metaPageView === true) {
+      const supabase = getSupabase();
+      const { data: clique } = await supabase
+        .from("leads_cliques")
+        .select("*")
+        .eq("id", result.trackingId)
+        .maybeSingle();
+      const { data: link } = clique?.link_id
+        ? await supabase.from("leads_links").select("*").eq("id", clique.link_id).maybeSingle()
+        : { data: null };
+
+      if (clique) {
+        void sendMetaConversionEvent({
+          clique,
+          link,
+          eventName: "PageView",
+          eventId: `pageview_${result.trackingId}`,
+          supabase,
+        });
+      }
     }
 
     return res.status(200).json({

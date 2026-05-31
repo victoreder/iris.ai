@@ -87,7 +87,7 @@ export { extractSenderJid } from "./evolutionLeads.js";
 async function getInstanceContext(supabase, instanceName) {
   const { data: inst } = await supabase
     .from("leads_instancias_whatsapp")
-    .select("id")
+    .select("id, conta_id")
     .eq("instance_name", String(instanceName).trim())
     .maybeSingle();
 
@@ -95,7 +95,7 @@ async function getInstanceContext(supabase, instanceName) {
 
   const { data: links } = await supabase.from("leads_links").select("id").eq("instancia_id", inst.id);
   const linkIds = (links ?? []).map((l) => l.id);
-  return { instanciaId: inst.id, linkIds };
+  return { instanciaId: inst.id, contaId: inst.conta_id, linkIds };
 }
 
 /** Filtra cliques da instância (via link ou WhatsApp direto sem link). */
@@ -204,6 +204,7 @@ export async function createDirectWhatsAppLead(supabase, { telefone, instanceNam
   const trackingId = generateTrackingId();
   const row = {
     id: trackingId,
+    conta_id: ctx.contaId,
     link_id: null,
     instancia_id: ctx.instanciaId,
     status: "aguardando",

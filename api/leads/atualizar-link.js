@@ -1,4 +1,5 @@
 import { getSupabase } from "../_lib.js";
+import { requireContaAuth } from "../_lib/auth.js";
 import { corsLeads, isValidLeadSlug, slugifyLeadLink } from "../_lib/leadsUtils.js";
 
 export const config = { api: { bodyParser: { sizeLimit: "64kb" } } };
@@ -9,6 +10,9 @@ export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Método não permitido." });
   }
+
+  const auth = await requireContaAuth(req, res, { minPapel: "membro" });
+  if (!auth) return;
 
   try {
     const { linkId, nome, slug, instanciaId, mensagemInicial, ativo } = req.body || {};
@@ -49,6 +53,7 @@ export default async function handler(req, res) {
       .from("leads_links")
       .update(updates)
       .eq("id", id)
+      .eq("conta_id", auth.contaId)
       .select("id, nome, slug, instancia_id, mensagem_inicial, ativo, created_at")
       .single();
 
