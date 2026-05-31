@@ -167,6 +167,9 @@ export interface LeadsCliqueMensagem {
   media_url: string | null;
   media_mime: string | null;
   media_nome: string | null;
+  disparou_etapa: boolean;
+  etapa_nome: string | null;
+  etapa_representa_venda: boolean;
   mensagem_em: string;
   created_at: string;
 }

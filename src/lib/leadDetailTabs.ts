@@ -10,3 +10,9 @@ export function parseLeadDetailTab(value: string | null): LeadDetailTab {
   if (value === "jornada" || value === "conversa") return value;
   return "geral";
 }
+
+export function leadDetailPath(leadId: string, tab?: LeadDetailTab): string {
+  const base = `/app/leads/${encodeURIComponent(leadId)}`;
+  if (tab && tab !== "geral") return `${base}?tab=${tab}`;
+  return base;
+}

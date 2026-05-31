@@ -58,6 +58,7 @@ const adminPageTitles: Record<string, string> = {
 export function getPageTitle(pathname: string): string {
   if (pageTitles[pathname]) return pageTitles[pathname];
   if (adminPageTitles[pathname]) return adminPageTitles[pathname];
+  if (/^\/app\/leads\/[^/]+$/.test(pathname)) return "Lead";
   if (pathname.startsWith(APP_ROUTES.configuracoes)) return "Configurações";
   if (pathname.startsWith("/admin")) return "Admin";
   return "Viziom";

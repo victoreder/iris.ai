@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { DollarSign, Filter } from "lucide-react";
 import { toast } from "sonner";
 import { DialogRoot, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -104,6 +105,8 @@ function MensagemBubble({ msg }: { msg: LeadsCliqueMensagem }) {
     msg.texto &&
     !(hasMedia && /^\[(Imagem|Vídeo|Áudio|Documento|Figurinha)\]$/.test(msg.texto.trim()));
 
+  const etapaLabel = msg.etapa_nome ? ` — ${msg.etapa_nome}` : "";
+
   return (
     <div className={cn("flex", msg.from_me ? "justify-end" : "justify-start")}>
       <div
@@ -117,16 +120,36 @@ function MensagemBubble({ msg }: { msg: LeadsCliqueMensagem }) {
         <MensagemMediaContent msg={msg} />
         {showText && <p className="whitespace-pre-wrap break-words text-sm">{msg.texto}</p>}
         {!showText && !hasMedia && <p className="text-sm">{msg.texto ?? "—"}</p>}
-        <p
+        <div
           className={cn(
-            "mt-1 text-[10px]",
+            "mt-1 flex flex-wrap items-center gap-1.5 text-[10px]",
             msg.from_me ? "text-primary-foreground/75" : "text-muted-foreground"
           )}
         >
-          {format(new Date(msg.mensagem_em), "dd/MM/yyyy HH:mm", { locale: ptBR })}
-          {" · "}
-          {msg.from_me ? "Enviada" : "Recebida"}
-        </p>
+          {msg.disparou_etapa && (
+            <span
+              className="inline-flex items-center gap-0.5 rounded bg-black/10 px-1 py-0.5"
+              title={`Etapa alterada${etapaLabel}`}
+            >
+              <Filter className="h-3 w-3 shrink-0" aria-hidden />
+              <span className="sr-only">Etapa alterada{etapaLabel}</span>
+            </span>
+          )}
+          {msg.etapa_representa_venda && (
+            <span
+              className="inline-flex items-center gap-0.5 rounded bg-emerald-500/20 px-1 py-0.5 text-emerald-700 dark:text-emerald-300"
+              title={`Venda${etapaLabel}`}
+            >
+              <DollarSign className="h-3 w-3 shrink-0" aria-hidden />
+              <span className="sr-only">Venda{etapaLabel}</span>
+            </span>
+          )}
+          <span>
+            {format(new Date(msg.mensagem_em), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+            {" · "}
+            {msg.from_me ? "Enviada" : "Recebida"}
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -210,6 +233,9 @@ export function LeadDetailDialog({
       media_url: null,
       media_mime: null,
       media_nome: null,
+      disparou_etapa: false,
+      etapa_nome: null,
+      etapa_representa_venda: false,
       mensagem_em: lead.convertido_at ?? lead.created_at,
       created_at: lead.convertido_at ?? lead.created_at,
     };

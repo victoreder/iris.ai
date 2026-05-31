@@ -2,6 +2,7 @@ import { Menu } from "lucide-react";
 import { AccountSwitcher } from "@/components/layout/AccountSwitcher";
 import { BugReportButton } from "@/components/layout/BugReportDialog";
 import { ProfileMenu } from "@/components/layout/ProfileMenu";
+import { WhatsappHeaderStatus } from "@/components/layout/WhatsappHeaderStatus";
 import { Button } from "@/components/ui/button";
 
 interface AppHeaderProps {
@@ -23,6 +24,8 @@ export function AppHeader({ title, onOpenMobileMenu }: AppHeaderProps) {
       </Button>
 
       <h1 className="min-w-0 flex-1 truncate text-lg font-semibold text-foreground">{title}</h1>
+
+      <WhatsappHeaderStatus />
 
       <div className="flex shrink-0 items-center gap-2 sm:gap-3">
         <BugReportButton compact />

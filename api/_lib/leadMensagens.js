@@ -154,3 +154,27 @@ export async function recordLeadMensagem(
     console.error("recordLeadMensagem:", e?.message);
   }
 }
+
+/**
+ * Marca a mensagem que disparou alteração de etapa (webhook).
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ */
+export async function markMensagemDisparouEtapa(supabase, { cliqueId, messageId, etapa }) {
+  if (!cliqueId || !messageId || !etapa) return;
+
+  try {
+    const { error } = await supabase
+      .from("leads_cliques_mensagens")
+      .update({
+        disparou_etapa: true,
+        etapa_nome: etapa.nome ?? null,
+        etapa_representa_venda: Boolean(etapa.representa_venda),
+      })
+      .eq("clique_id", cliqueId)
+      .eq("message_id", messageId);
+
+    if (error) console.error("markMensagemDisparouEtapa:", error.message);
+  } catch (e) {
+    console.error("markMensagemDisparouEtapa:", e?.message);
+  }
+}

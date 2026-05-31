@@ -25,7 +25,7 @@ import {
   sanitizeForLog,
 } from "../_lib/leadsLogger.js";
 import { recordEtapaAlterada, recordLeadNovo } from "../_lib/leadEventos.js";
-import { recordLeadMensagem } from "../_lib/leadMensagens.js";
+import { recordLeadMensagem, markMensagemDisparouEtapa, extractMessageIdFromWebhookItem } from "../_lib/leadMensagens.js";
 
 export const config = { api: { bodyParser: { sizeLimit: "512kb" } } };
 
@@ -363,7 +363,14 @@ export default async function handler(req, res) {
             matchMethod: clique.link_id ? matchMethod : "whatsapp_direto",
             isFirstConversion: true,
           });
-          if (ok) processed += 1;
+          if (ok) {
+            processed += 1;
+            await markMensagemDisparouEtapa(supabase, {
+              cliqueId: trackingId,
+              messageId: extractMessageIdFromWebhookItem(item),
+              etapa: etapaPrimeiro.etapa,
+            });
+          }
         }
         continue;
       }
@@ -478,7 +485,14 @@ export default async function handler(req, res) {
         matchMethod: "palavra_chave_instancia",
         isFirstConversion,
       });
-      if (ok) processed += 1;
+      if (ok) {
+        processed += 1;
+        await markMensagemDisparouEtapa(supabase, {
+          cliqueId: trackingId,
+          messageId: extractMessageIdFromWebhookItem(item),
+          etapa: etapaKeyword,
+        });
+      }
     }
 
     if (processed > 0) {

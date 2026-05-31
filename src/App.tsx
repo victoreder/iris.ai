@@ -15,6 +15,7 @@ import { LeadRedirect } from "@/pages/LeadRedirect";
 import { QrConnectPage } from "@/pages/QrConnectPage";
 import { OverviewPage } from "@/pages/app/OverviewPage";
 import { InboxPage } from "@/pages/app/InboxPage";
+import { LeadDetailPage } from "@/pages/app/LeadDetailPage";
 import { CampaignsPage } from "@/pages/app/CampaignsPage";
 import { PipelinePage } from "@/pages/app/PipelinePage";
 import { ChannelsPage } from "@/pages/app/ChannelsPage";
@@ -80,6 +81,7 @@ export default function App() {
                 <Route index element={<Navigate to="dashboard" replace />} />
                 <Route path="dashboard" element={<OverviewPage />} />
                 <Route path="leads" element={<InboxPage />} />
+                <Route path="leads/:leadId" element={<LeadDetailPage />} />
                 <Route path="campanhas" element={<CampaignsPage />} />
                 <Route path="jornada" element={<PipelinePage />} />
                 <Route path="atividade" element={<ActivityPage />} />

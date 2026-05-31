@@ -12,7 +12,7 @@ import {
   Search,
   X,
 } from "lucide-react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { useConta } from "@/contexts/ContaContext";
@@ -20,7 +20,7 @@ import { useLeadsInstancias } from "@/hooks/useLeadsInstancias";
 import { LeadsOriginMetricsCards } from "@/components/leads/LeadsOriginMetricsCards";
 import { LeadsWhatsappFilter } from "@/components/leads/LeadsWhatsappFilter";
 import { LeadsKanbanBoard } from "@/components/leads/LeadsKanbanBoard";
-import { LeadDetailDialog } from "@/components/leads/LeadDetailDialog";
+import { InboxLegacyLeadRedirect } from "@/pages/app/LeadDetailPage";
 import { MetaOriginBadge } from "@/components/leads/MetaOriginBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,7 +38,7 @@ import {
 } from "@/components/ui/table";
 import { apiPost } from "@/lib/api";
 import { exportLeadsCsv } from "@/lib/exportLeadsCsv";
-import { parseLeadDetailTab, type LeadDetailTab } from "@/lib/leadDetailTabs";
+import { leadDetailPath, type LeadDetailTab } from "@/lib/leadDetailTabs";
 import { filterConvertedLeads, groupLeadsByKanbanColumn } from "@/lib/leadsKanban";
 import {
   getOriginLabel,
@@ -53,9 +53,6 @@ import { cn } from "@/lib/utils";
 import type { LeadsClique, LeadsJornadaEtapa, LeadsLink } from "@/types/database";
 
 type LeadsPeriod = Extract<DatePreset, "hoje" | "ultimos_7" | "ultimos_30" | "todo">;
-
-const LEAD_DETAIL_SELECT =
-  "*, leads_links(id, nome, slug, instancia_id), leads_jornada_etapas(id, nome, representa_venda)";
 
 const PERIOD_LABELS: Record<LeadsPeriod, string> = {
   hoje: "Hoje",
@@ -87,9 +84,9 @@ function isLeadInPeriod(c: LeadsClique, from: Date, to: Date) {
 }
 
 export function InboxPage() {
+  const navigate = useNavigate();
   const { contaAtiva, canWrite } = useConta();
   const { instancias } = useLeadsInstancias(true);
-  const [searchParams, setSearchParams] = useSearchParams();
   const [cliques, setCliques] = useState<LeadsClique[]>([]);
   const [links, setLinks] = useState<LeadsLink[]>([]);
   const [etapas, setEtapas] = useState<LeadsJornadaEtapa[]>([]);
@@ -103,78 +100,12 @@ export function InboxPage() {
   const [kanbanInstanciaId, setKanbanInstanciaId] = useState<string | null>(null);
   const [whatsappPickerOpen, setWhatsappPickerOpen] = useState(false);
   const [pickerSelection, setPickerSelection] = useState("");
-  const [urlLead, setUrlLead] = useState<LeadsClique | null>(null);
   const filtersToggleRef = useRef<HTMLButtonElement>(null);
   const filtersPanelRef = useRef<HTMLDivElement>(null);
 
-  const urlLeadId = searchParams.get("lead");
-  const detailTab = parseLeadDetailTab(searchParams.get("tab"));
-
-  const selectedLead = useMemo(() => {
-    if (!urlLeadId) return null;
-    return cliques.find((c) => c.id === urlLeadId) ?? urlLead;
-  }, [urlLeadId, cliques, urlLead]);
-
-  const updateLeadUrl = useCallback(
-    (leadId: string | null, tab: LeadDetailTab = "geral", replace = false) => {
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          if (leadId) next.set("lead", leadId);
-          else next.delete("lead");
-          if (leadId && tab !== "geral") next.set("tab", tab);
-          else next.delete("tab");
-          return next;
-        },
-        { replace }
-      );
-    },
-    [setSearchParams]
-  );
-
-  const closeLeadDetail = useCallback(() => {
-    updateLeadUrl(null, "geral", true);
-  }, [updateLeadUrl]);
-
-  const handleDetailTabChange = useCallback(
-    (tab: LeadDetailTab) => {
-      if (!urlLeadId) return;
-      updateLeadUrl(urlLeadId, tab, true);
-    },
-    [urlLeadId, updateLeadUrl]
-  );
-
-  useEffect(() => {
-    if (!urlLeadId || !contaAtiva) {
-      setUrlLead(null);
-      return;
-    }
-    if (cliques.some((c) => c.id === urlLeadId)) {
-      setUrlLead(null);
-      return;
-    }
-
-    let cancelled = false;
-    void supabase
-      .from("leads_cliques")
-      .select(LEAD_DETAIL_SELECT)
-      .eq("id", urlLeadId)
-      .eq("conta_id", contaAtiva.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (cancelled) return;
-        if (data) setUrlLead(data as LeadsClique);
-        else {
-          setUrlLead(null);
-          updateLeadUrl(null, "geral", true);
-          toast.error("Lead não encontrado.");
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [urlLeadId, contaAtiva?.id, cliques, updateLeadUrl]);
+  const openLeadDetail = (lead: LeadsClique, tab: LeadDetailTab = "geral") => {
+    navigate(leadDetailPath(lead.id, tab));
+  };
 
   useEffect(() => {
     if (!filtersOpen) return;
@@ -284,10 +215,6 @@ export function InboxPage() {
     setLinkFilter("all");
   };
 
-  const openLeadDetail = (lead: LeadsClique, tab: LeadDetailTab = "geral") => {
-    updateLeadUrl(lead.id, tab);
-  };
-
   const openColunasView = () => {
     if (instancias.length === 0) {
       toast.error("Conecte um WhatsApp para ver o funil em colunas.");
@@ -344,6 +271,7 @@ export function InboxPage() {
 
   return (
     <div className="space-y-5">
+      <InboxLegacyLeadRedirect />
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <Select
           value={period}
@@ -592,16 +520,6 @@ export function InboxPage() {
           </DialogFooter>
         </DialogContent>
       </DialogRoot>
-
-      <LeadDetailDialog
-        lead={selectedLead}
-        etapas={etapas}
-        open={!!urlLeadId && !!selectedLead}
-        initialTab={detailTab}
-        onTabChange={handleDetailTabChange}
-        onClose={closeLeadDetail}
-        onUpdated={load}
-      />
     </div>
   );
 }
