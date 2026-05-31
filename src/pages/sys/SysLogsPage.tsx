@@ -31,7 +31,6 @@ export function SysLogsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Logs do sistema</h1>
         <p className="text-muted-foreground">
           Auditoria de ações administrativas e eventos críticos.
         </p>

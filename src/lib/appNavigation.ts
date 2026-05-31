@@ -39,15 +39,26 @@ const pageTitles: Record<string, string> = {
   [APP_ROUTES.jornada]: "Jornada de compra",
   [APP_ROUTES.atividade]: "Atividade",
   [APP_ROUTES.whatsapp]: "WhatsApps",
-  [`${APP_ROUTES.configuracoes}/perfil`]: "Configurações",
-  [`${APP_ROUTES.configuracoes}/conta`]: "Configurações",
-  [`${APP_ROUTES.configuracoes}/equipe`]: "Configurações",
-  [`${APP_ROUTES.configuracoes}/plano`]: "Configurações",
-  [`${APP_ROUTES.configuracoes}/integracoes`]: "Configurações",
+  [`${APP_ROUTES.configuracoes}/perfil`]: "Perfil",
+  [`${APP_ROUTES.configuracoes}/conta`]: "Conta",
+  [`${APP_ROUTES.configuracoes}/equipe`]: "Equipe",
+  [`${APP_ROUTES.configuracoes}/plano`]: "Plano",
+  [`${APP_ROUTES.configuracoes}/integracoes`]: "Integrações",
+};
+
+const adminPageTitles: Record<string, string> = {
+  "/admin": "Dashboard",
+  "/admin/contas": "Contas",
+  "/admin/usuarios": "Usuários",
+  "/admin/plans": "Planos",
+  "/admin/feedback": "Bugs e sugestões",
+  "/admin/logs": "Logs",
 };
 
 export function getPageTitle(pathname: string): string {
   if (pageTitles[pathname]) return pageTitles[pathname];
+  if (adminPageTitles[pathname]) return adminPageTitles[pathname];
   if (pathname.startsWith(APP_ROUTES.configuracoes)) return "Configurações";
+  if (pathname.startsWith("/admin")) return "Admin";
   return "Viziom";
 }

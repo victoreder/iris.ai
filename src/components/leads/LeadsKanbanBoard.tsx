@@ -12,11 +12,11 @@ interface Props {
 
 export function LeadsKanbanBoard({ columns, onLeadClick, onDragEnd, canDrag }: Props) {
   return (
-    <div className="flex gap-4 overflow-x-auto pb-4">
+    <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 scroll-smooth md:snap-none">
       {columns.map((col) => (
         <div
           key={col.id}
-          className="min-w-[260px] flex-1 rounded-lg bg-muted/50 p-3"
+          className="w-[85vw] shrink-0 snap-center rounded-lg bg-muted/50 p-3 sm:w-[280px] md:w-auto md:min-w-[260px] md:flex-1 md:shrink md:snap-align-none"
           onDragOver={(e) => canDrag && e.preventDefault()}
           onDrop={(e) => {
             if (!canDrag || !onDragEnd) return;

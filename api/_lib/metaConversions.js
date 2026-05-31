@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { getSupabase } from "../_lib.js";
 import { onlyDigits } from "./leadsUtils.js";
 import { logLeadsEvent } from "./leadsLogger.js";
+import { recordMetaEnviado } from "./leadEventos.js";
 
 function sha256(value) {
   return crypto.createHash("sha256").update(value).digest("hex");
@@ -187,7 +188,10 @@ export async function sendMetaForEtapa({ supabase, clique, link, etapa, force = 
     return { ok: true, skipped: true, reason: "already_sent" };
   }
 
-  const eventName = String(etapa.evento_meta ?? "Lead").trim() || "Lead";
+  const eventName = String(etapa.evento_meta ?? "").trim();
+  if (!eventName) {
+    return { ok: true, skipped: true, reason: "no_event_configured" };
+  }
   const eventId = `lead_${clique.id}_etapa_${etapa.id}`;
   const value =
     etapa.representa_venda && etapa.valor_venda != null ? Number(etapa.valor_venda) : null;
@@ -215,6 +219,16 @@ export async function sendMetaForEtapa({ supabase, clique, link, etapa, force = 
   } else {
     await supabase.from("leads_cliques_meta_envios").insert(row);
   }
+
+  await recordMetaEnviado(supabase, {
+    contaId: clique.conta_id,
+    cliqueId: clique.id,
+    etapa,
+    eventoMeta: eventName,
+    metaEnviado: metaResult.ok === true,
+    metaErro: metaResult.error || null,
+    detalhes: { skipped: metaResult.skipped === true, reason: metaResult.reason ?? null },
+  });
 
   if (metaResult.ok) {
     await supabase

@@ -6,7 +6,6 @@ import {
 } from "../_lib/evolutionLeads.js";
 import {
   extractEvolutionMessages,
-  getWebhookMessageDirection,
   isJornadaWebhookMessage,
   isOutgoingFromInstance,
   resolveCliqueFromMessage,
@@ -25,6 +24,8 @@ import {
   prepareWebhookBodyForLog,
   sanitizeForLog,
 } from "../_lib/leadsLogger.js";
+import { recordEtapaAlterada, recordLeadNovo } from "../_lib/leadEventos.js";
+import { recordLeadMensagem } from "../_lib/leadMensagens.js";
 
 export const config = { api: { bodyParser: { sizeLimit: "512kb" } } };
 
@@ -111,6 +112,26 @@ async function applyEtapaToClique(supabase, {
     status: isFirstConversion ? "convertido" : clique.status,
   };
 
+  if (isFirstConversion && updatedRow) {
+    await recordLeadNovo(supabase, {
+      contaId: clique.conta_id,
+      cliqueId: trackingId,
+      etapa,
+      detalhes: { matchMethod, telefone: telefone || null },
+    });
+  }
+
+  const etapaMudou = clique.etapa_id !== etapa.id;
+  if (updatedRow && (etapaMudou || isFirstConversion)) {
+    await recordEtapaAlterada(supabase, {
+      contaId: clique.conta_id,
+      cliqueId: trackingId,
+      etapa,
+      etapaAnteriorId: clique.etapa_id ?? null,
+      detalhes: { matchMethod, origem: isFirstConversion ? "conversao" : "jornada" },
+    });
+  }
+
   await sendMetaForEtapa({
     supabase,
     clique: cliqueAtualizado,
@@ -142,6 +163,19 @@ async function applyEtapaToClique(supabase, {
 
 function resolveInstanciaId(clique) {
   return clique?.instancia_id ?? clique?.leads_links?.instancia_id ?? null;
+}
+
+async function persistLeadMensagem(supabase, { item, clique, trackingId, instanciaId, isOutgoing, text, instanceName }) {
+  if (!clique?.conta_id || !trackingId) return;
+  await recordLeadMensagem(supabase, {
+    contaId: clique.conta_id,
+    cliqueId: trackingId,
+    instanciaId: instanciaId ?? resolveInstanciaId(clique),
+    fromMe: isOutgoing,
+    item,
+    text: text ?? "",
+    instanceName,
+  });
 }
 
 export default async function handler(req, res) {
@@ -214,7 +248,6 @@ export default async function handler(req, res) {
     let processed = 0;
 
     for (const item of messages) {
-      const direction = getWebhookMessageDirection(item);
       const isOutgoing = isOutgoingFromInstance(item);
 
       if (!isJornadaWebhookMessage(item)) {
@@ -232,23 +265,24 @@ export default async function handler(req, res) {
         continue;
       }
 
-      // Mudança de etapa: somente mensagens enviadas pela instância (fromMe: true)
-      if (!isOutgoing) {
-        const textIn = extractMessageTextFromWebhookItem(item);
-        const telefoneIn = phoneFromWebhookItem(item);
-        if (!textIn?.trim() && !telefoneIn) continue;
+      const text = extractMessageTextFromWebhookItem(item);
+      const remoteJid = extractSenderJid(item);
+      const telefone = phoneFromWebhookItem(item);
 
-        let { clique, trackingId, matchMethod } = await resolveCliqueFromMessage(supabase, {
-          text: textIn || "",
-          instanceName: instance,
-          telefone: telefoneIn,
-        });
+      if (!isOutgoing && !text?.trim() && !telefone) continue;
 
-        if (!clique || !trackingId) {
+      let { clique, trackingId, matchMethod } = await resolveCliqueFromMessage(supabase, {
+        text: text || "",
+        instanceName: instance,
+        telefone,
+      });
+
+      if (!clique || !trackingId) {
+        if (!isOutgoing) {
           const created = await createDirectWhatsAppLead(supabase, {
-            telefone: telefoneIn,
+            telefone,
             instanceName: instance,
-            text: textIn || "",
+            text: text || "",
           });
           if (created) {
             clique = created.clique;
@@ -256,13 +290,46 @@ export default async function handler(req, res) {
             matchMethod = created.matchMethod;
           }
         }
+      }
 
-        if (clique && trackingId && clique.status === "aguardando") {
+      if (!clique || !trackingId) {
+        if (isOutgoing) {
+          await logLeadsEvent({
+            supabase,
+            tipo: "webhook",
+            nivel: "aviso",
+            mensagem: "Mensagem recebida — lead não identificado",
+            instanceName: instance,
+            detalhes: {
+              preview: sanitizeForLog(text, 200),
+              telefone: telefone || null,
+              remoteJid: remoteJid || null,
+              event,
+              messageItem: prepareWebhookBodyForLog(item),
+            },
+          });
+        }
+        continue;
+      }
+
+      await persistLeadMensagem(supabase, {
+        item,
+        clique,
+        trackingId,
+        instanciaId: instanceCheck.instancia?.id,
+        isOutgoing,
+        text,
+        instanceName: instance,
+      });
+
+      // Entrada do lead — conversão na primeira mensagem
+      if (!isOutgoing) {
+        if (clique.status === "aguardando") {
           const instanciaIdIn = resolveInstanciaId(clique);
           if (!instanciaIdIn) continue;
 
           const etapasIn = await getEtapasForInstancia(supabase, instanciaIdIn);
-          const etapaPrimeiro = debugResolveEtapaFromMessage(etapasIn, textIn, {
+          const etapaPrimeiro = debugResolveEtapaFromMessage(etapasIn, text, {
             isFirstMessage: true,
             matchKeywords: false,
           });
@@ -289,8 +356,8 @@ export default async function handler(req, res) {
             clique,
             trackingId,
             etapa: etapaPrimeiro.etapa,
-            telefone: telefoneIn,
-            text: textIn,
+            telefone,
+            text,
             link: clique.leads_links ?? null,
             instance,
             matchMethod: clique.link_id ? matchMethod : "whatsapp_direto",
@@ -300,10 +367,6 @@ export default async function handler(req, res) {
         }
         continue;
       }
-
-      const text = extractMessageTextFromWebhookItem(item);
-      const remoteJid = extractSenderJid(item);
-      const telefone = phoneFromWebhookItem(item);
 
       if (!text?.trim() && !telefone) {
         await logLeadsEvent({
@@ -315,30 +378,6 @@ export default async function handler(req, res) {
           detalhes: {
             remoteJid: remoteJid || null,
             key: prepareWebhookBodyForLog(item?.key ?? item?.data?.key ?? {}),
-            messageItem: prepareWebhookBodyForLog(item),
-          },
-        });
-        continue;
-      }
-
-      let { clique, trackingId, matchMethod } = await resolveCliqueFromMessage(supabase, {
-        text: text || "",
-        instanceName: instance,
-        telefone,
-      });
-
-      if (!clique || !trackingId) {
-        await logLeadsEvent({
-          supabase,
-          tipo: "webhook",
-          nivel: "aviso",
-          mensagem: "Mensagem recebida — lead não identificado",
-          instanceName: instance,
-          detalhes: {
-            preview: sanitizeForLog(text, 200),
-            telefone: telefone || null,
-            remoteJid: remoteJid || null,
-            event,
             messageItem: prepareWebhookBodyForLog(item),
           },
         });

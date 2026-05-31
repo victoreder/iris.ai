@@ -4,6 +4,7 @@ import { useConta } from "@/contexts/ContaContext";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { getPageTitle } from "@/lib/appNavigation";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { isImpersonating } from "@/lib/impersonate";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +25,7 @@ export function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const pageTitle = getPageTitle(location.pathname);
+  useDocumentTitle(pageTitle);
 
   useEffect(() => {
     setMobileOpen(false);

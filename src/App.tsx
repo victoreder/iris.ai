@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Toaster } from "sonner";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ContaProvider } from "@/contexts/ContaContext";
@@ -32,6 +32,12 @@ import { SysFeedbackPage } from "@/pages/sys/SysFeedbackPage";
 import { SysUsuariosPage } from "@/pages/sys/SysUsuariosPage";
 import { OnboardingPage } from "@/pages/OnboardingPage";
 import { ImpersonateBanner } from "@/components/ImpersonateBanner";
+
+function SysLegacyRedirect() {
+  const { pathname, search, hash } = useLocation();
+  const target = `${pathname.replace(/^\/sys(?=\/|$)/, "/admin")}${search}${hash}`;
+  return <Navigate to={target} replace />;
+}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -96,8 +102,9 @@ export default function App() {
                 <Route path="settings/*" element={<Navigate to="/app/configuracoes/perfil" replace />} />
               </Route>
             </Route>
+            <Route path="/sys/*" element={<SysLegacyRedirect />} />
             <Route
-              path="/sys"
+              path="/admin"
               element={
                 <ProtectedRoute>
                   <AppAccessGuard>
@@ -109,7 +116,7 @@ export default function App() {
               <Route index element={<SysDashboardPage />} />
               <Route path="contas" element={<SysContasPage />} />
               <Route path="usuarios" element={<SysUsuariosPage />} />
-              <Route path="clients" element={<Navigate to="/sys/contas" replace />} />
+              <Route path="clients" element={<Navigate to="/admin/contas" replace />} />
               <Route path="plans" element={<SysPlansPage />} />
               <Route path="feedback" element={<SysFeedbackPage />} />
               <Route path="logs" element={<SysLogsPage />} />

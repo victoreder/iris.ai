@@ -124,6 +124,53 @@ export interface LeadsClique {
   leads_jornada_etapas?: Pick<LeadsJornadaEtapa, "id" | "nome" | "representa_venda"> | null;
 }
 
+export type LeadsCliqueEventoTipo = "lead_novo" | "etapa_alterada" | "meta_enviado";
+
+export interface LeadsCliqueEvento {
+  id: string;
+  conta_id: string;
+  clique_id: string;
+  tipo: LeadsCliqueEventoTipo;
+  etapa_id: string | null;
+  etapa_nome: string | null;
+  etapa_anterior_id: string | null;
+  etapa_anterior_nome: string | null;
+  evento_meta: string | null;
+  meta_enviado: boolean | null;
+  meta_erro: string | null;
+  detalhes: Record<string, unknown> | null;
+  created_at: string;
+  leads_cliques?: Pick<LeadsClique, "telefone_lead"> | null;
+}
+
+export type LeadsCliqueMensagemTipo =
+  | "texto"
+  | "imagem"
+  | "video"
+  | "audio"
+  | "documento"
+  | "sticker"
+  | "contato"
+  | "localizacao"
+  | "outro";
+
+export interface LeadsCliqueMensagem {
+  id: string;
+  conta_id: string;
+  clique_id: string;
+  instancia_id: string | null;
+  from_me: boolean;
+  texto: string | null;
+  tipo: LeadsCliqueMensagemTipo;
+  message_id: string | null;
+  remote_jid: string | null;
+  media_url: string | null;
+  media_mime: string | null;
+  media_nome: string | null;
+  mensagem_em: string;
+  created_at: string;
+}
+
 export interface LeadsLog {
   id: string;
   conta_id: string | null;

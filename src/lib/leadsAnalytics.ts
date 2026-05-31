@@ -67,15 +67,90 @@ export function isMetaOrigin(c: LeadsClique): boolean {
   );
 }
 
+export function isGoogleOrigin(c: LeadsClique): boolean {
+  if (isMetaOrigin(c)) return false;
+  if (c.gclid) return true;
+
+  const blob = [c.utm_source, c.utm_medium, c.utm_campaign, c.utm_content]
+    .filter(Boolean)
+    .join(" ");
+
+  return /google|googleads|adwords|gads|youtube|goog/i.test(blob);
+}
+
+export function hasLeadTracking(c: LeadsClique): boolean {
+  return Boolean(
+    c.utm_source ||
+      c.utm_medium ||
+      c.utm_campaign ||
+      c.utm_content ||
+      c.utm_term ||
+      c.fbclid ||
+      c.gclid ||
+      c.ttclid ||
+      c.fbp ||
+      c.fbc ||
+      c.referrer
+  );
+}
+
+export type LeadOriginCategory = "meta" | "google" | "outras" | "sem_rastreio";
+
+export const LEAD_ORIGIN_LABELS: Record<LeadOriginCategory, string> = {
+  meta: "Meta Ads",
+  google: "Google Ads",
+  outras: "Outras origens",
+  sem_rastreio: "Sem rastreio",
+};
+
+export function getLeadOriginCategory(c: LeadsClique): LeadOriginCategory {
+  if (isMetaOrigin(c)) return "meta";
+  if (isGoogleOrigin(c)) return "google";
+  if (hasLeadTracking(c)) return "outras";
+  return "sem_rastreio";
+}
+
+export interface LeadsOriginMetrics {
+  total: number;
+  meta: number;
+  google: number;
+  outras: number;
+  semRastreio: number;
+}
+
+export function aggregateLeadsByOrigin(leads: LeadsClique[]): LeadsOriginMetrics {
+  const metrics: LeadsOriginMetrics = {
+    total: leads.length,
+    meta: 0,
+    google: 0,
+    outras: 0,
+    semRastreio: 0,
+  };
+
+  for (const lead of leads) {
+    const category = getLeadOriginCategory(lead);
+    if (category === "meta") metrics.meta += 1;
+    else if (category === "google") metrics.google += 1;
+    else if (category === "outras") metrics.outras += 1;
+    else metrics.semRastreio += 1;
+  }
+
+  return metrics;
+}
+
 export function getOriginLabel(c: LeadsClique): string {
-  if (isMetaOrigin(c)) return "Meta Ads";
-  if (c.utm_source || c.utm_campaign) {
-    const parts = [c.utm_source, c.utm_campaign].filter(Boolean);
-    return parts.join(" / ") || "Campanha";
+  const category = getLeadOriginCategory(c);
+  if (category === "meta") return LEAD_ORIGIN_LABELS.meta;
+  if (category === "google") return LEAD_ORIGIN_LABELS.google;
+  if (category === "outras") {
+    if (c.utm_source || c.utm_campaign) {
+      const parts = [c.utm_source, c.utm_campaign].filter(Boolean);
+      return parts.join(" / ") || LEAD_ORIGIN_LABELS.outras;
+    }
+    return LEAD_ORIGIN_LABELS.outras;
   }
   if (!c.link_id) return "WhatsApp direto";
-  if (!c.utm_source && !c.utm_campaign && !c.referrer) return "Sem origem";
-  return "Outros";
+  return LEAD_ORIGIN_LABELS.sem_rastreio;
 }
 
 export interface DashboardFilters {

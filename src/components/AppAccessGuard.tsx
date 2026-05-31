@@ -38,7 +38,7 @@ export function AppLayoutGuard() {
   }
 
   if (!contaAtiva) {
-    if (isSuperadmin) return <Navigate to="/sys" replace />;
+    if (isSuperadmin) return <Navigate to="/admin" replace />;
     return <NoAccessPage />;
   }
 

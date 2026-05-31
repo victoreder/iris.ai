@@ -30,7 +30,7 @@ export function ContaSuspensaPage() {
           </p>
           <div className="flex flex-col gap-2">
             {isSuperadmin && (
-              <Button variant="default" onClick={() => (window.location.href = "/sys/contas")}>
+              <Button variant="default" onClick={() => (window.location.href = "/admin/contas")}>
                 Gerenciar no admin
               </Button>
             )}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { collectAttribution } from "@/lib/collectAttribution";
 import { registerLeadClick } from "@/lib/registerClick";
@@ -12,11 +12,24 @@ declare global {
 
 const META_WAIT_MS = 5000;
 
+const spinnerStyle: CSSProperties = {
+  width: 32,
+  height: 32,
+  border: "3px solid #3F37FF",
+  borderTopColor: "transparent",
+  borderRadius: "50%",
+  animation: "spin 0.8s linear infinite",
+};
+
 export function LeadRedirect() {
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
   const metaMode = searchParams.get("meta") === "1";
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    document.title = metaMode ? "Aguarde…" : "Redirecionando…";
+  }, [metaMode]);
 
   useEffect(() => {
     const s = slug?.trim();
@@ -63,6 +76,19 @@ export function LeadRedirect() {
     void run();
   }, [slug, metaMode]);
 
+  if (!metaMode && !error) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "#f8f9fc",
+        }}
+        aria-busy="true"
+        aria-label="Redirecionando"
+      />
+    );
+  }
+
   return (
     <div
       style={{
@@ -76,26 +102,9 @@ export function LeadRedirect() {
         background: "#f8f9fc",
       }}
     >
-      <div
-        style={{
-          height: 48,
-          width: 48,
-          borderRadius: 12,
-          background: "#3F37FF",
-          color: "#fff",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: 24,
-          fontWeight: 700,
-          marginBottom: 24,
-        }}
-      >
-        V
-      </div>
       {error ? (
         <p style={{ color: "#b91c1c", textAlign: "center", maxWidth: 360 }}>{error}</p>
-      ) : metaMode ? (
+      ) : (
         <>
           <p style={{ color: "#171717", fontSize: 18, fontWeight: 600, textAlign: "center" }}>
             Por favor, aguarde alguns segundos.
@@ -103,33 +112,7 @@ export function LeadRedirect() {
           <p style={{ color: "#525252", marginTop: 8, textAlign: "center", maxWidth: 360 }}>
             Estamos localizando um atendente disponível…
           </p>
-          <div
-            style={{
-              marginTop: 24,
-              width: 32,
-              height: 32,
-              border: "3px solid #3F37FF",
-              borderTopColor: "transparent",
-              borderRadius: "50%",
-              animation: "spin 0.8s linear infinite",
-            }}
-          />
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-        </>
-      ) : (
-        <>
-          <p style={{ color: "#525252" }}>Redirecionando para o WhatsApp…</p>
-          <div
-            style={{
-              marginTop: 16,
-              width: 32,
-              height: 32,
-              border: "3px solid #3F37FF",
-              borderTopColor: "transparent",
-              borderRadius: "50%",
-              animation: "spin 0.8s linear infinite",
-            }}
-          />
+          <div style={{ ...spinnerStyle, marginTop: 24 }} />
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </>
       )}

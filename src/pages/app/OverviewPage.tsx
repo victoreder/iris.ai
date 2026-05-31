@@ -99,7 +99,6 @@ export function OverviewPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Overview</h1>
         <p className="text-muted-foreground">Métricas de leads convertidos</p>
       </div>
 

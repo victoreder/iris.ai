@@ -176,7 +176,6 @@ export function SysContasPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Contas</h1>
           <p className="text-muted-foreground">Gerencie empresas, planos e vencimentos.</p>
         </div>
         <Button onClick={() => setCreateOpen(true)}>Nova conta</Button>

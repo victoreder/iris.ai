@@ -40,7 +40,7 @@ export async function ensureContatoInicialEtapa(supabase, instanciaId, contaId) 
       nome: "Contato Inicial",
       posicao: 1,
       palavras_chave: [],
-      evento_meta: "Lead",
+      evento_meta: "",
       primeiro_contato: true,
       representa_venda: false,
     })

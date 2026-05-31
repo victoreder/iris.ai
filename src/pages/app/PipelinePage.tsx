@@ -8,7 +8,7 @@ import { useWhatsappSelection } from "@/hooks/useWhatsappSelection";
 import { JornadaFunnel } from "@/components/leads/JornadaFunnel";
 import { MetaLogoIcon } from "@/components/leads/MetaOriginBadge";
 import { WhatsappTabs } from "@/components/leads/WhatsappTabs";
-import { LEADS_META_EVENTOS } from "@/lib/leadsMetaEvents";
+import { LEADS_META_EVENTOS_OPTIONS, META_EVENTO_NENHUM } from "@/lib/leadsMetaEvents";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DialogRoot, DialogContent, DialogFooter } from "@/components/ui/dialog";
@@ -27,7 +27,7 @@ interface EtapaForm {
 
 const emptyEtapa: EtapaForm = {
   nome: "",
-  evento_meta: "Lead",
+  evento_meta: META_EVENTO_NENHUM,
   primeiro_contato: false,
   representa_venda: false,
   valor_venda: "",
@@ -114,7 +114,7 @@ export function PipelinePage() {
     setInstanciaDialog(etapa.instancia_id);
     setForm({
       nome: etapa.nome,
-      evento_meta: etapa.evento_meta || "Lead",
+      evento_meta: etapa.evento_meta ?? META_EVENTO_NENHUM,
       primeiro_contato: etapa.primeiro_contato,
       representa_venda: etapa.representa_venda,
       valor_venda: etapa.valor_venda?.toString() ?? "",
@@ -233,7 +233,6 @@ export function PipelinePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Jornada de compra</h1>
         <p className="text-muted-foreground">
           {instancias.length === 1 && instanciaAtiva ? (
             <>
@@ -316,7 +315,7 @@ export function PipelinePage() {
                     setForm((f) => ({
                       ...f,
                       primeiro_contato: e.target.checked,
-                      evento_meta: e.target.checked ? "Lead" : f.evento_meta,
+                      evento_meta: e.target.checked ? META_EVENTO_NENHUM : f.evento_meta,
                       palavras_chave: e.target.checked ? [] : f.palavras_chave,
                       representa_venda: e.target.checked ? false : f.representa_venda,
                     }))
@@ -403,9 +402,9 @@ export function PipelinePage() {
                 value={form.evento_meta}
                 onChange={(e) => setForm((f) => ({ ...f, evento_meta: e.target.value }))}
               >
-                {LEADS_META_EVENTOS.map((ev) => (
-                  <option key={ev} value={ev}>
-                    {ev}
+                {LEADS_META_EVENTOS_OPTIONS.map((ev) => (
+                  <option key={ev.value || "none"} value={ev.value}>
+                    {ev.label}
                   </option>
                 ))}
               </Select>

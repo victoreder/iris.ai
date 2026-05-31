@@ -2,6 +2,7 @@ import { getSupabase } from "../_lib.js";
 import { requireContaAuth } from "../_lib/auth.js";
 import { sendMetaForEtapa } from "../_lib/metaConversions.js";
 import { corsLeads } from "../_lib/leadsUtils.js";
+import { recordEtapaAlterada } from "../_lib/leadEventos.js";
 
 export const config = { api: { bodyParser: { sizeLimit: "32kb" } } };
 
@@ -64,6 +65,16 @@ export default async function handler(req, res) {
 
     if (errUpdate) {
       return res.status(500).json({ error: errUpdate.message });
+    }
+
+    if (clique.etapa_id !== etapaRow.id) {
+      await recordEtapaAlterada(supabase, {
+        contaId: auth.contaId,
+        cliqueId: id,
+        etapa: etapaRow,
+        etapaAnteriorId: clique.etapa_id ?? null,
+        detalhes: { origem: "manual" },
+      });
     }
 
     const cliqueAtualizado = {

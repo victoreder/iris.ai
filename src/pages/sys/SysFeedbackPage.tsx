@@ -157,7 +157,6 @@ export function SysFeedbackPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Bugs e sugestões</h1>
         <p className="text-muted-foreground">Relatos enviados pelos usuários do Viziom.</p>
       </div>
 

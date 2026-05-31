@@ -25,10 +25,7 @@ export function SettingsLayout() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold">Configurações</h2>
-        <p className="text-sm text-muted-foreground">{contaAtiva.nome}</p>
-      </div>
+      <p className="text-sm text-muted-foreground">{contaAtiva.nome}</p>
       <nav className="-mx-1 flex gap-1 overflow-x-auto border-b border-border pb-px">
         {tabs.map(({ to, label, icon: Icon }) => (
           <NavLink

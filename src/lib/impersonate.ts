@@ -58,7 +58,7 @@ export async function startImpersonate(userId: string): Promise<void> {
 export async function endImpersonate(): Promise<void> {
   const raw = sessionStorage.getItem(STORAGE_KEY);
   if (!raw) {
-    window.location.href = "/sys";
+    window.location.href = "/admin";
     return;
   }
 
@@ -71,5 +71,5 @@ export async function endImpersonate(): Promise<void> {
   });
 
   if (error) throw error;
-  window.location.href = "/sys";
+  window.location.href = "/admin";
 }

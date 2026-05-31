@@ -18,35 +18,29 @@ export function resolveKanbanColumnId(
   lead: LeadsClique,
   etapas: LeadsJornadaEtapa[]
 ): string {
-  if (lead.status === "aguardando" || lead.status === "expirado") {
-    return CLIQUES_COLUMN_ID;
-  }
   if (lead.etapa_id) return lead.etapa_id;
 
   const instId = getLeadInstanciaId(lead);
   const primeiro = etapas.find((e) => e.instancia_id === instId && e.primeiro_contato);
-  return primeiro?.id ?? CLIQUES_COLUMN_ID;
+  return primeiro?.id ?? etapas.find((e) => e.instancia_id === instId)?.id ?? CLIQUES_COLUMN_ID;
 }
 
 export function buildKanbanColumns(
   etapas: LeadsJornadaEtapa[],
   instanciaId: string
 ): Omit<KanbanColumn, "leads">[] {
-  const cols: Omit<KanbanColumn, "leads">[] = [
-    { id: CLIQUES_COLUMN_ID, title: "Cliques" },
-  ];
-  const sorted = etapas
+  return etapas
     .filter((e) => e.instancia_id === instanciaId)
-    .sort((a, b) => a.posicao - b.posicao);
-
-  for (const e of sorted) {
-    cols.push({
+    .sort((a, b) => a.posicao - b.posicao)
+    .map((e) => ({
       id: e.id,
       title: e.nome,
       representa_venda: e.representa_venda,
-    });
-  }
-  return cols;
+    }));
+}
+
+export function filterConvertedLeads(cliques: LeadsClique[]): LeadsClique[] {
+  return cliques.filter((c) => c.status === "convertido");
 }
 
 export function groupLeadsByKanbanColumn(
@@ -54,11 +48,13 @@ export function groupLeadsByKanbanColumn(
   etapas: LeadsJornadaEtapa[],
   instanciaId: string
 ): KanbanColumn[] {
-  const filtered = filterLeadsByInstancia(cliques, instanciaId);
+  const filtered = filterConvertedLeads(filterLeadsByInstancia(cliques, instanciaId));
   const columns = buildKanbanColumns(etapas, instanciaId).map((c) => ({
     ...c,
     leads: [] as LeadsClique[],
   }));
+
+  if (columns.length === 0) return [];
 
   for (const lead of filtered) {
     const colId = resolveKanbanColumnId(lead, etapas);

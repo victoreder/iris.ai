@@ -7,7 +7,6 @@ import { useConta } from "@/contexts/ContaContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { DialogRoot, DialogContent } from "@/components/ui/dialog";
 import { Label, Select } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/badge";
 import {
@@ -18,40 +17,45 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { LeadsLog, LeadsLogNivel, LeadsLogTipo } from "@/types/database";
+import { describeLeadEvento, LEAD_EVENTO_LABELS } from "@/lib/leadEventos";
+import { formatPhoneBR } from "@/lib/leadsAnalytics";
+import type { LeadsCliqueEvento, LeadsCliqueEventoTipo } from "@/types/database";
 
-const nivelVariant: Record<LeadsLogNivel, "default" | "success" | "destructive" | "warning"> = {
-  info: "default",
-  sucesso: "success",
-  erro: "destructive",
-  aviso: "warning",
+type EventoComLead = LeadsCliqueEvento & {
+  leads_cliques?: { telefone_lead: string | null } | null;
+};
+
+const eventoBadgeVariant: Record<
+  LeadsCliqueEventoTipo,
+  "default" | "success" | "destructive" | "warning" | "meta"
+> = {
+  lead_novo: "success",
+  etapa_alterada: "default",
+  meta_enviado: "meta",
 };
 
 export function ActivityPage() {
   const { contaAtiva } = useConta();
-  const [logs, setLogs] = useState<LeadsLog[]>([]);
+  const [eventos, setEventos] = useState<EventoComLead[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tipo, setTipo] = useState<LeadsLogTipo | "all">("all");
-  const [nivel, setNivel] = useState<LeadsLogNivel | "all">("all");
-  const [selected, setSelected] = useState<LeadsLog | null>(null);
+  const [tipo, setTipo] = useState<LeadsCliqueEventoTipo | "all">("all");
 
   const load = useCallback(async () => {
     if (!contaAtiva) return;
     setLoading(true);
     let q = supabase
-      .from("leads_logs")
-      .select("*")
+      .from("leads_cliques_eventos")
+      .select("*, leads_cliques(telefone_lead)")
       .eq("conta_id", contaAtiva.id)
       .order("created_at", { ascending: false })
       .limit(300);
 
     if (tipo !== "all") q = q.eq("tipo", tipo);
-    if (nivel !== "all") q = q.eq("nivel", nivel);
 
     const { data } = await q;
-    setLogs((data as LeadsLog[]) ?? []);
+    setEventos((data as EventoComLead[]) ?? []);
     setLoading(false);
-  }, [contaAtiva?.id, tipo, nivel]);
+  }, [contaAtiva?.id, tipo]);
 
   useEffect(() => {
     void load();
@@ -63,8 +67,9 @@ export function ActivityPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Activity</h1>
-          <p className="text-muted-foreground">Logs de cliques, webhooks e Meta</p>
+          <p className="text-muted-foreground">
+            Novos leads, mudanças de etapa e envios para a Meta
+          </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => void load()}>
           <RefreshCw className="h-4 w-4" /> Atualizar
@@ -75,21 +80,14 @@ export function ActivityPage() {
         <div className="flex flex-wrap gap-4 p-4">
           <div className="space-y-1">
             <Label>Tipo</Label>
-            <Select value={tipo} onChange={(e) => setTipo(e.target.value as LeadsLogTipo | "all")}>
+            <Select
+              value={tipo}
+              onChange={(e) => setTipo(e.target.value as LeadsCliqueEventoTipo | "all")}
+            >
               <option value="all">Todos</option>
-              <option value="clique">Clique</option>
-              <option value="webhook">Webhook</option>
-              <option value="meta">Meta</option>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <Label>Nível</Label>
-            <Select value={nivel} onChange={(e) => setNivel(e.target.value as LeadsLogNivel | "all")}>
-              <option value="all">Todos</option>
-              <option value="sucesso">Sucesso</option>
-              <option value="info">Info</option>
-              <option value="aviso">Aviso</option>
-              <option value="erro">Erro</option>
+              <option value="lead_novo">Novo lead</option>
+              <option value="etapa_alterada">Etapa alterada</option>
+              <option value="meta_enviado">Evento Meta</option>
             </Select>
           </div>
         </div>
@@ -98,58 +96,37 @@ export function ActivityPage() {
             <TableRow>
               <TableHead>Data</TableHead>
               <TableHead>Tipo</TableHead>
-              <TableHead>Nível</TableHead>
-              <TableHead>Mensagem</TableHead>
-              <TableHead>Instância</TableHead>
-              <TableHead>Clique ID</TableHead>
+              <TableHead>Lead</TableHead>
+              <TableHead>Descrição</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {logs.map((log) => (
-              <TableRow
-                key={log.id}
-                className="cursor-pointer"
-                onClick={() => setSelected(log)}
-              >
-                <TableCell className="text-xs whitespace-nowrap">
-                  {format(new Date(log.created_at), "dd/MM/yyyy HH:mm:ss", { locale: ptBR })}
+            {eventos.map((evento) => (
+              <TableRow key={evento.id}>
+                <TableCell className="whitespace-nowrap text-xs">
+                  {format(new Date(evento.created_at), "dd/MM/yyyy HH:mm:ss", { locale: ptBR })}
                 </TableCell>
                 <TableCell>
-                  <Badge variant="default">{log.tipo}</Badge>
+                  <Badge variant={eventoBadgeVariant[evento.tipo]}>
+                    {LEAD_EVENTO_LABELS[evento.tipo]}
+                  </Badge>
                 </TableCell>
-                <TableCell>
-                  <Badge variant={nivelVariant[log.nivel]}>{log.nivel}</Badge>
+                <TableCell className="text-sm">
+                  {formatPhoneBR(evento.leads_cliques?.telefone_lead)}
                 </TableCell>
-                <TableCell className="max-w-xs truncate text-sm">{log.mensagem}</TableCell>
-                <TableCell className="text-xs">{log.instance_name ?? "—"}</TableCell>
-                <TableCell className="font-mono text-xs">{log.clique_id ?? "—"}</TableCell>
+                <TableCell className="max-w-md text-sm">{describeLeadEvento(evento)}</TableCell>
               </TableRow>
             ))}
-            {logs.length === 0 && (
+            {eventos.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
-                  Nenhum log
+                <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
+                  Nenhuma atividade registrada
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       </Card>
-
-      <DialogRoot open={!!selected} onOpenChange={(v) => !v && setSelected(null)}>
-        <DialogContent title="Detalhe do log">
-          {selected && (
-            <div className="space-y-3 text-sm">
-              <p>{selected.mensagem}</p>
-              {selected.detalhes && (
-                <pre className="max-h-80 overflow-auto rounded-md bg-muted p-3 text-xs">
-                  {JSON.stringify(selected.detalhes, null, 2)}
-                </pre>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </DialogRoot>
     </div>
   );
 }

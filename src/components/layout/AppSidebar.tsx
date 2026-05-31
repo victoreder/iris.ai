@@ -4,6 +4,7 @@ import { useUsuario } from "@/contexts/UsuarioContext";
 import { sidebarNavItems } from "@/lib/appNavigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { SidebarLogo } from "@/components/layout/SidebarLogo";
 
 interface AppSidebarProps {
   collapsed: boolean;
@@ -41,18 +42,16 @@ export function AppSidebar({
       >
         <div
           className={cn(
-            "flex h-14 shrink-0 items-center border-b border-sidebar-muted md:hidden",
-            isCollapsedDesktop ? "justify-center px-2" : "justify-between px-4"
+            "flex shrink-0 items-center border-b border-sidebar-muted pt-[50px] md:hidden",
+            isCollapsedDesktop ? "justify-center px-2 pb-2" : "justify-between gap-2 px-3 pb-2"
           )}
         >
           {!isCollapsedDesktop && (
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-sm font-bold text-white">
-                V
-              </div>
-              <span className="font-semibold">Viziom</span>
+            <div className="min-w-0 flex-1">
+              <SidebarLogo />
             </div>
           )}
+          {isCollapsedDesktop && <SidebarLogo />}
           <Button variant="ghost" size="icon" className="text-sidebar-foreground md:hidden" onClick={onCloseMobile}>
             <X className="h-5 w-5" />
           </Button>
@@ -60,21 +59,11 @@ export function AppSidebar({
 
         <div
           className={cn(
-            "hidden border-b border-sidebar-muted py-5 md:block",
-            isCollapsedDesktop ? "px-2 text-center" : "px-4"
+            "hidden shrink-0 border-b border-sidebar-muted pt-[50px] md:block",
+            isCollapsedDesktop ? "px-2 pb-2" : "px-3 pb-2"
           )}
         >
-          <div className={cn("flex items-center gap-2", isCollapsedDesktop && "justify-center")}>
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary text-sm font-bold text-white">
-              V
-            </div>
-            {!isCollapsedDesktop && (
-              <div className="min-w-0">
-                <span className="text-lg font-semibold">Viziom</span>
-                <p className="text-xs text-sidebar-foreground/60">Rastreio WhatsApp</p>
-              </div>
-            )}
-          </div>
+          <SidebarLogo />
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-4">
@@ -102,16 +91,21 @@ export function AppSidebar({
 
           {isSuperadmin && (
             <NavLink
-              to="/sys"
-              title={isCollapsedDesktop ? "Admin Viziom" : undefined}
+              to="/admin"
+              title={isCollapsedDesktop ? "Admin" : undefined}
               onClick={onCloseMobile}
-              className={cn(
-                "mt-2 flex items-center rounded-md text-sm text-sidebar-foreground/80 hover:bg-sidebar-muted",
-                isCollapsedDesktop ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2"
-              )}
+              className={({ isActive }) =>
+                cn(
+                  "mt-3 flex items-center rounded-md border text-sm font-medium transition-colors",
+                  isCollapsedDesktop ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2",
+                  isActive
+                    ? "border-amber-400/70 bg-amber-500/25 text-amber-50"
+                    : "border-amber-500/35 bg-amber-500/10 text-amber-200/90 hover:border-amber-400/55 hover:bg-amber-500/20"
+                )
+              }
             >
               <Shield className="h-4 w-4 shrink-0" />
-              {!isCollapsedDesktop && <span>Admin Viziom</span>}
+              {!isCollapsedDesktop && <span>Admin</span>}
             </NavLink>
           )}
         </nav>

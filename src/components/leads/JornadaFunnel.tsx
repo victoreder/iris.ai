@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MetaLogoIcon } from "@/components/leads/MetaOriginBadge";
+import { getMetaEventoLabel, shouldSendMetaEvent } from "@/lib/leadsMetaEvents";
 import type { LeadsJornadaEtapa } from "@/types/database";
 
 interface JornadaFunnelProps {
@@ -160,10 +161,16 @@ export function JornadaFunnel({
                             {kw}
                           </Badge>
                         ))}
-                      <Badge variant="meta" className="gap-1.5">
-                        <MetaLogoIcon className="h-4 w-4 shrink-0" />
-                        {etapa.evento_meta}
-                      </Badge>
+                      {shouldSendMetaEvent(etapa.evento_meta) ? (
+                        <Badge variant="meta" className="gap-1.5">
+                          <MetaLogoIcon className="h-4 w-4 shrink-0" />
+                          {getMetaEventoLabel(etapa.evento_meta)}
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="font-normal text-muted-foreground">
+                          Sem evento Meta
+                        </Badge>
+                      )}
                     </div>
                   </div>
 
