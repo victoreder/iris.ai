@@ -8,6 +8,7 @@ const variants = {
   destructive: "bg-red-100 text-red-800",
   primary: "bg-primary/10 text-primary",
   meta: "bg-blue-100 text-blue-800",
+  google: "bg-green-100 text-green-800",
 };
 
 export function Badge({

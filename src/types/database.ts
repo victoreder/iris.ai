@@ -7,6 +7,7 @@ export type LeadsLogNivel = "info" | "sucesso" | "erro" | "aviso";
 
 export interface Conta {
   id: string;
+  numero: number;
   nome: string;
   slug: string;
   plano_id: string | null;
@@ -14,6 +15,11 @@ export interface Conta {
   email_contato: string | null;
   telefone: string | null;
   onboarding_pendente: boolean;
+  onboarding_etapa_atual: number;
+  onboarding_concluido_em: string | null;
+  empresa_tamanho_funcionarios: string | null;
+  empresa_como_conheceu: string | null;
+  campanha_estilo_principal: string | null;
   data_vencimento: string | null;
   lembrete_vencimento_para?: string | null;
   created_at: string;
@@ -140,6 +146,7 @@ export interface LeadsCliqueOrigem {
   ordem: number;
   origem_clique_id: string | null;
   link_id: string | null;
+  instancia_id: string | null;
   campanha_nome: string | null;
   utm_source: string | null;
   utm_medium: string | null;
@@ -151,6 +158,11 @@ export interface LeadsCliqueOrigem {
   ttclid: string | null;
   referrer: string | null;
   landing_url: string | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  device_type: string | null;
+  browser: string | null;
+  os: string | null;
   fbp: string | null;
   fbc: string | null;
   registrado_em: string;

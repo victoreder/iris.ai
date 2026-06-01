@@ -1,8 +1,8 @@
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
-import { MetaOriginBadge } from "@/components/leads/MetaOriginBadge";
-import { getOriginLabel, isMetaOrigin, formatPhoneBR } from "@/lib/leadsAnalytics";
+import { LeadOriginBadge } from "@/components/leads/MetaOriginBadge";
+import { getOriginLabel, isGoogleOrigin, isMetaOrigin, formatPhoneBR } from "@/lib/leadsAnalytics";
 import type { LeadsClique } from "@/types/database";
 
 interface Props {
@@ -26,8 +26,11 @@ export function LeadKanbanCard({ lead, onClick }: Props) {
         </p>
         <div className="mt-2 flex items-center justify-between gap-2">
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            {isMetaOrigin(lead) && <MetaOriginBadge />}
-            {!isMetaOrigin(lead) && <span>{origin}</span>}
+            {isMetaOrigin(lead) || isGoogleOrigin(lead) ? (
+              <LeadOriginBadge lead={lead} />
+            ) : (
+              <span>{origin}</span>
+            )}
           </span>
           <span className="text-xs text-muted-foreground">
             {format(new Date(date), "dd/MM HH:mm", { locale: ptBR })}

@@ -127,7 +127,6 @@ export default async function handler(req, res) {
       email: emailTrim,
       nome,
       senhaTemporaria: SENHA_PADRAO,
-      nomeConta: conta.nome,
     }).catch((err) => console.error("email boas-vindas:", err));
 
     return res.status(200).json({

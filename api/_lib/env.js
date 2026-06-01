@@ -10,3 +10,11 @@ export function getSupabaseEnv() {
     "";
   return { url, serviceRoleKey, anonKey };
 }
+
+export function getAppPublicUrl() {
+  const raw =
+    process.env.APP_PUBLIC_URL?.trim() ||
+    process.env.VITE_APP_PUBLIC_URL?.trim() ||
+    "";
+  return raw.replace(/\/+$/, "");
+}

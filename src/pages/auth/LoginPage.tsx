@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { isInviteFlowPending } from "@/lib/authInvite";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
@@ -12,7 +13,10 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  if (!loading && user) return <Navigate to="/app/dashboard" replace />;
+  if (!loading && user) {
+    if (isInviteFlowPending()) return <Navigate to="/auth/convite" replace />;
+    return <Navigate to="/app" replace />;
+  }
 
   if (loading) {
     return (

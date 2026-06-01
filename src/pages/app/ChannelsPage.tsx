@@ -60,7 +60,7 @@ function qrImageSrc(base64: string): string {
 }
 
 export function ChannelsPage() {
-  const { contaAtiva, isAdmin } = useConta();
+  const { contaAtiva, canDelete, isAdmin } = useConta();
   const [instancias, setInstancias] = useState<LeadsInstanciaWhatsapp[]>([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
@@ -163,7 +163,7 @@ export function ChannelsPage() {
   };
 
   const excluirInstancia = async () => {
-    if (!contaAtiva || !isAdmin || !deleteTarget) return;
+    if (!contaAtiva || !canDelete || !deleteTarget) return;
     setBusy(`delete-${deleteTarget.id}`);
     try {
       await apiPost(
@@ -182,7 +182,7 @@ export function ChannelsPage() {
   };
 
   const criarInstancia = async () => {
-    if (!contaAtiva || !isAdmin) return;
+    if (!contaAtiva || !canDelete) return;
     if (atLimit) {
       toast.error(
         `Limite do plano: máximo de ${maxWhatsapps} WhatsApp(s). Exclua uma instância ou faça upgrade.`
@@ -328,7 +328,7 @@ export function ChannelsPage() {
                         <RefreshCw className="h-4 w-4" />
                       )}
                     </Button>
-                    {isAdmin && (
+                    {canDelete && (
                       <Button
                         variant="ghost"
                         size="icon"

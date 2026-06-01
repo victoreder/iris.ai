@@ -1,5 +1,7 @@
+import { useLocation, useNavigate } from "react-router-dom";
 import { ChevronDown } from "lucide-react";
 import { useConta } from "@/contexts/ContaContext";
+import { contaUrlRef, replaceContaInPath } from "@/lib/appNavigation";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -16,6 +18,14 @@ interface AccountSwitcherProps {
 
 export function AccountSwitcher({ compact }: AccountSwitcherProps) {
   const { contaAtiva, contas, setContaAtiva, papelAtivo } = useConta();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const switchConta = (conta: (typeof contas)[number]) => {
+    setContaAtiva(conta);
+    const path = replaceContaInPath(location.pathname, contaUrlRef(conta));
+    navigate(`${path}${location.search}${location.hash}`);
+  };
 
   return (
     <DropdownMenu>
@@ -34,7 +44,7 @@ export function AccountSwitcher({ compact }: AccountSwitcherProps) {
         {contas.map((conta) => (
           <DropdownMenuItem
             key={conta.id}
-            onClick={() => setContaAtiva(conta)}
+            onClick={() => switchConta(conta)}
             className={cn(conta.id === contaAtiva?.id && "bg-primary/10 font-medium text-primary")}
           >
             <span className="truncate">{conta.nome}</span>

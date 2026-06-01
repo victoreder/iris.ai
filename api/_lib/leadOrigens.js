@@ -9,6 +9,7 @@ function origemSnapshotFromClique(clique) {
   return {
     origem_clique_id: clique.id,
     link_id: clique.link_id ?? null,
+    instancia_id: clique.instancia_id ?? link?.instancia_id ?? null,
     campanha_nome: link?.nome ?? (clique.link_id ? null : "WhatsApp direto"),
     utm_source: clique.utm_source ?? null,
     utm_medium: clique.utm_medium ?? null,
@@ -20,6 +21,11 @@ function origemSnapshotFromClique(clique) {
     ttclid: clique.ttclid ?? null,
     referrer: clique.referrer ?? null,
     landing_url: clique.landing_url ?? null,
+    ip_address: clique.ip_address ?? null,
+    user_agent: clique.user_agent ?? null,
+    device_type: clique.device_type ?? null,
+    browser: clique.browser ?? null,
+    os: clique.os ?? null,
     fbp: clique.fbp ?? null,
     fbc: clique.fbc ?? null,
   };

@@ -10,7 +10,7 @@ import type { LeadsJornadaEtapa } from "@/types/database";
 interface JornadaFunnelProps {
   etapas: LeadsJornadaEtapa[];
   canWrite: boolean;
-  isAdmin: boolean;
+  canDelete: boolean;
   onCreate: () => void;
   onEdit: (etapa: LeadsJornadaEtapa) => void;
   onDelete: (etapa: LeadsJornadaEtapa) => void;
@@ -20,7 +20,7 @@ interface JornadaFunnelProps {
 export function JornadaFunnel({
   etapas,
   canWrite,
-  isAdmin,
+  canDelete,
   onCreate,
   onEdit,
   onDelete,
@@ -172,7 +172,7 @@ export function JornadaFunnel({
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      {isAdmin && !etapa.primeiro_contato && (
+                      {canDelete && !etapa.primeiro_contato && (
                         <Button
                           variant="ghost"
                           size="icon"

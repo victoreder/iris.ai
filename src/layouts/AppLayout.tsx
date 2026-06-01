@@ -3,6 +3,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import { useConta } from "@/contexts/ContaContext";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { AppSidebar } from "@/components/layout/AppSidebar";
+import { ViewerOnlyNotice } from "@/components/layout/ViewerOnlyNotice";
 import { getPageTitle } from "@/lib/appNavigation";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { isImpersonating } from "@/lib/impersonate";
@@ -20,13 +21,13 @@ function readCollapsed(): boolean {
 
 export function AppLayout() {
   const location = useLocation();
-  const { contaAtiva, loading } = useConta();
+  const { contaAtiva, loading, isViewer } = useConta();
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const pageTitle = getPageTitle(location.pathname);
   useDocumentTitle(pageTitle);
-  const isLeadDetail = /^\/app\/leads\/[^/]+$/.test(location.pathname);
+  const isLeadDetail = /^\/app\/[^/]+\/leads\/[^/]+$/.test(location.pathname);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -62,6 +63,11 @@ export function AppLayout() {
               isLeadDetail ? "" : "max-w-7xl px-4 py-6 sm:px-6 sm:py-8"
             )}
           >
+            {isViewer && (
+              <div className="mb-6">
+                <ViewerOnlyNotice />
+              </div>
+            )}
             <Outlet />
           </div>
         </main>

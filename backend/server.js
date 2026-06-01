@@ -26,7 +26,12 @@ import adminAtualizarContaHandler from "../api/admin/atualizar-conta.js";
 import adminRegistrarPagamentoHandler from "../api/admin/registrar-pagamento.js";
 import adminImpersonarHandler from "../api/admin/impersonar.js";
 import contaAdicionarMembroHandler from "../api/conta/adicionar-membro.js";
+import contaAtualizarContaHandler from "../api/conta/atualizar-conta.js";
+import contaAtualizarMembroHandler from "../api/conta/atualizar-membro.js";
+import contaRemoverMembroHandler from "../api/conta/remover-membro.js";
 import cronVerificarVencimentosHandler from "../api/cron/verificar-vencimentos.js";
+import perfilAvatarHandler from "../api/perfil/avatar.js";
+import devPreviewEmailHandler from "../api/dev/preview-email.js";
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3333;
@@ -65,7 +70,13 @@ post("/api/admin/atualizar-conta", adminAtualizarContaHandler);
 post("/api/admin/registrar-pagamento", adminRegistrarPagamentoHandler);
 post("/api/admin/impersonar", adminImpersonarHandler);
 post("/api/conta/adicionar-membro", contaAdicionarMembroHandler);
+post("/api/conta/atualizar-conta", contaAtualizarContaHandler);
+post("/api/conta/atualizar-membro", contaAtualizarMembroHandler);
+post("/api/conta/remover-membro", contaRemoverMembroHandler);
 post("/api/cron/verificar-vencimentos", cronVerificarVencimentosHandler);
+post("/api/perfil/avatar", perfilAvatarHandler);
+app.delete("/api/perfil/avatar", wrapApiHandler(perfilAvatarHandler));
+get("/api/dev/preview-email", devPreviewEmailHandler);
 
 app.listen(PORT, () => {
   console.log(`Viziom API em http://localhost:${PORT}`);

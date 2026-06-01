@@ -51,10 +51,10 @@ export function parseLeadsUtmFiltersFromSearch(params: URLSearchParams): LeadsUt
   };
 }
 
-export function buildLeadsListUrlWithUtm(field: LeadsUtmField, value: string): string {
+export function buildLeadsListUrlWithUtm(contaRef: string, field: LeadsUtmField, value: string): string {
   const params = new URLSearchParams();
   params.set(field, value);
-  return `/app/leads?${params.toString()}`;
+  return `/app/${contaRef}/leads?${params.toString()}`;
 }
 
 export function countActiveLeadsUtmFilters(filters: LeadsUtmFilters): number {

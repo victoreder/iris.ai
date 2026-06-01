@@ -11,8 +11,8 @@ export function parseLeadDetailTab(value: string | null): LeadDetailTab {
   return "geral";
 }
 
-export function leadDetailPath(leadId: string, tab?: LeadDetailTab): string {
-  const base = `/app/leads/${encodeURIComponent(leadId)}`;
+export function leadDetailPath(contaRef: string, leadId: string, tab?: LeadDetailTab): string {
+  const base = `/app/${contaRef}/leads/${encodeURIComponent(leadId)}`;
   if (tab && tab !== "geral") return `${base}?tab=${tab}`;
   return base;
 }

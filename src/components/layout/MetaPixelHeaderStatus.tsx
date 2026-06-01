@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { MetaLogoIcon } from "@/components/leads/MetaOriginBadge";
 import { useConta } from "@/contexts/ContaContext";
-import { APP_ROUTES } from "@/lib/appNavigation";
+import { useAppRoutes } from "@/hooks/useAppRoutes";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
@@ -10,6 +10,7 @@ export const META_PIXEL_CONFIG_HASH = "meta-pixel";
 
 export function MetaPixelHeaderStatus() {
   const { contaAtiva } = useConta();
+  const routes = useAppRoutes();
   const [loading, setLoading] = useState(true);
   const [pixelConfigured, setPixelConfigured] = useState(true);
 
@@ -34,7 +35,7 @@ export function MetaPixelHeaderStatus() {
 
   return (
     <Link
-      to={`${APP_ROUTES.configuracoes}/integracoes#${META_PIXEL_CONFIG_HASH}`}
+      to={`${routes.configuracoes}/integracoes#${META_PIXEL_CONFIG_HASH}`}
       className={cn(
         "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-opacity hover:opacity-90",
         "bg-orange-500/15 text-orange-700 dark:text-orange-400"

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useConta } from "@/contexts/ContaContext";
-import { supabase } from "@/lib/supabase";
+import { AdminOnlyNotice } from "@/components/settings/AdminOnlyNotice";
+import { apiPost } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
@@ -25,15 +26,15 @@ export function AccountSettingsPage() {
     if (!contaAtiva || !isAdmin) return;
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from("contas")
-        .update({
+      await apiPost(
+        "/api/conta/atualizar-conta",
+        {
           nome: nome.trim(),
-          email_contato: emailContato.trim() || null,
-          telefone: telefone.trim() || null,
-        })
-        .eq("id", contaAtiva.id);
-      if (error) throw error;
+          emailContato: emailContato.trim(),
+          telefone: telefone.trim(),
+        },
+        contaAtiva.id
+      );
       await refreshContas();
       toast.success("Conta atualizada.");
     } catch (err) {
@@ -49,19 +50,22 @@ export function AccountSettingsPage() {
     <Card>
       <CardHeader>
         <CardTitle>Dados da empresa</CardTitle>
-        <CardDescription>
-          Informações editáveis pelo admin. Plano, status e slug são gerenciados pelo Viziom.
-        </CardDescription>
+        <CardDescription>Dados da empresa vinculada à conta ativa.</CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSave} className="max-w-md space-y-4">
+        {!isAdmin && (
+          <div className="mb-4">
+            <AdminOnlyNotice action="editar os dados da empresa" />
+          </div>
+        )}
+        <fieldset disabled={!isAdmin} className="max-w-md space-y-4 border-0 p-0 m-0">
+        <form onSubmit={handleSave} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="nome">Nome da empresa</Label>
             <Input
               id="nome"
               value={nome}
               onChange={(e) => setNome(e.target.value)}
-              disabled={!isAdmin}
               required
             />
           </div>
@@ -72,7 +76,6 @@ export function AccountSettingsPage() {
               type="email"
               value={emailContato}
               onChange={(e) => setEmailContato(e.target.value)}
-              disabled={!isAdmin}
             />
           </div>
           <div className="space-y-2">
@@ -81,16 +84,7 @@ export function AccountSettingsPage() {
               id="telefone"
               value={telefone}
               onChange={(e) => setTelefone(e.target.value)}
-              disabled={!isAdmin}
             />
-          </div>
-          <div className="space-y-2">
-            <Label>Slug (somente leitura)</Label>
-            <Input value={contaAtiva.slug} disabled />
-          </div>
-          <div className="space-y-2">
-            <Label>Status (somente leitura)</Label>
-            <Input value={contaAtiva.status} disabled className="capitalize" />
           </div>
           {isAdmin && (
             <Button type="submit" disabled={saving}>
@@ -98,6 +92,7 @@ export function AccountSettingsPage() {
             </Button>
           )}
         </form>
+        </fieldset>
       </CardContent>
     </Card>
   );

@@ -69,14 +69,3 @@ export async function submitFeedback(input: SubmitFeedbackInput): Promise<string
   if (error) throw error;
   return feedbackId;
 }
-
-export async function uploadAvatar(userId: string, file: File): Promise<string> {
-  const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
-  const path = `${userId}/avatar.${ext}`;
-  const { error } = await supabase.storage.from("avatars").upload(path, file, {
-    upsert: true,
-    contentType: file.type,
-  });
-  if (error) throw error;
-  return path;
-}

@@ -28,6 +28,7 @@ import { Input, Label, Select } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/badge";
 import { apiPost } from "@/lib/api";
 import { exportLeadsCsv } from "@/lib/exportLeadsCsv";
+import { contaUrlRef } from "@/lib/appNavigation";
 import { leadDetailPath, type LeadDetailTab } from "@/lib/leadDetailTabs";
 import { LEAD_DETAIL_SELECT } from "@/lib/leadsConstants";
 import { groupLeadsByKanbanColumn } from "@/lib/leadsKanban";
@@ -121,7 +122,8 @@ export function InboxPage() {
   };
 
   const openLeadDetail = (lead: LeadsClique, tab: LeadDetailTab = "geral") => {
-    navigate(leadDetailPath(lead.id, tab));
+    if (!contaAtiva) return;
+    navigate(leadDetailPath(contaUrlRef(contaAtiva), lead.id, tab));
   };
 
   useEffect(() => {

@@ -1,26 +1,27 @@
 import { Navigate, NavLink, Outlet } from "react-router-dom";
 import { Building2, CreditCard, Plug, User, Users } from "lucide-react";
 import { useConta } from "@/contexts/ContaContext";
-import { APP_ROUTES } from "@/lib/appNavigation";
+import { useAppRoutes } from "@/hooks/useAppRoutes";
 import { cn } from "@/lib/utils";
 
-const tabs = [
-  { to: `${APP_ROUTES.configuracoes}/perfil`, label: "Perfil", icon: User },
-  { to: `${APP_ROUTES.configuracoes}/conta`, label: "Conta", icon: Building2 },
-  { to: `${APP_ROUTES.configuracoes}/equipe`, label: "Equipe", icon: Users },
-  { to: `${APP_ROUTES.configuracoes}/plano`, label: "Plano", icon: CreditCard },
-  { to: `${APP_ROUTES.configuracoes}/integracoes`, label: "Integrações", icon: Plug },
-];
-
 export function SettingsLayout() {
-  const { contaAtiva, loading, isAdmin } = useConta();
+  const { contaAtiva, loading } = useConta();
+  const routes = useAppRoutes();
+
+  const tabs = [
+    { to: `${routes.configuracoes}/perfil`, label: "Perfil", icon: User },
+    { to: `${routes.configuracoes}/conta`, label: "Conta", icon: Building2 },
+    { to: `${routes.configuracoes}/equipe`, label: "Equipe", icon: Users },
+    { to: `${routes.configuracoes}/plano`, label: "Plano", icon: CreditCard },
+    { to: `${routes.configuracoes}/integracoes`, label: "Meta Pixel", icon: Plug },
+  ];
 
   if (loading) {
     return <p className="text-muted-foreground">Carregando…</p>;
   }
 
   if (!contaAtiva) {
-    return <Navigate to={APP_ROUTES.dashboard} replace />;
+    return <Navigate to={routes.dashboard} replace />;
   }
 
   return (
@@ -45,11 +46,6 @@ export function SettingsLayout() {
           </NavLink>
         ))}
       </nav>
-      {!isAdmin && (
-        <p className="text-sm text-amber-700">
-          Algumas opções exigem perfil admin da conta.
-        </p>
-      )}
       <Outlet />
     </div>
   );

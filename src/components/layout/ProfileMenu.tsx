@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { LogOut, MessageCircle, Settings, User } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUsuario } from "@/contexts/UsuarioContext";
-import { APP_ROUTES } from "@/lib/appNavigation";
+import { useAppRoutes } from "@/hooks/useAppRoutes";
 import { getAvatarPublicUrl } from "@/lib/storageUrls";
 import {
   DropdownMenu,
@@ -18,6 +18,7 @@ import { UserAvatar } from "@/components/layout/UserAvatar";
 export function ProfileMenu() {
   const { user, signOut } = useAuth();
   const { usuario } = useUsuario();
+  const routes = useAppRoutes();
 
   const photoUrl = getAvatarPublicUrl(usuario?.foto_url);
   const displayName = usuario?.nome ?? user?.email ?? "Usuário";
@@ -42,19 +43,19 @@ export function ProfileMenu() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link to={`${APP_ROUTES.configuracoes}/perfil`}>
+          <Link to={`${routes.configuracoes}/perfil`}>
             <User className="h-4 w-4" />
             Informações pessoais
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link to={APP_ROUTES.configuracoes}>
+          <Link to={routes.configuracoes}>
             <Settings className="h-4 w-4" />
             Configurações
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link to={APP_ROUTES.whatsapp}>
+          <Link to={routes.whatsapp}>
             <MessageCircle className="h-4 w-4" />
             WhatsApps
           </Link>

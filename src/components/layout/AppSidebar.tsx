@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Shield, X } from "lucide-react";
 import { useUsuario } from "@/contexts/UsuarioContext";
+import { useAppRoutes } from "@/hooks/useAppRoutes";
 import { sidebarNavItems } from "@/lib/appNavigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,8 @@ export function AppSidebar({
   onCloseMobile,
 }: AppSidebarProps) {
   const { isSuperadmin } = useUsuario();
+  const routes = useAppRoutes();
+  const navItems = sidebarNavItems(routes);
   const isCollapsedDesktop = collapsed && !mobileOpen;
 
   return (
@@ -42,7 +45,7 @@ export function AppSidebar({
       >
         <div
           className={cn(
-            "flex shrink-0 items-center border-b border-sidebar-muted pt-[50px] md:hidden",
+            "flex shrink-0 items-center border-b border-sidebar-muted pt-[30px] md:hidden",
             isCollapsedDesktop ? "justify-center px-2 pb-2" : "justify-between gap-2 px-3 pb-2"
           )}
         >
@@ -59,7 +62,7 @@ export function AppSidebar({
 
         <div
           className={cn(
-            "hidden shrink-0 border-b border-sidebar-muted pt-[50px] md:block",
+            "hidden shrink-0 border-b border-sidebar-muted pt-[30px] md:block",
             isCollapsedDesktop ? "px-2 pb-2" : "px-3 pb-2"
           )}
         >
@@ -67,7 +70,7 @@ export function AppSidebar({
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-4">
-          {sidebarNavItems.map(({ to, label, icon: Icon, end }) => (
+          {navItems.map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}
               to={to}

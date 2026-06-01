@@ -2,6 +2,7 @@ export interface Usuario {
   id: string;
   email: string;
   nome: string | null;
+  telefone: string | null;
   foto_url: string | null;
   superadmin: boolean;
   created_at: string;

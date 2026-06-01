@@ -10,6 +10,11 @@ import {
 } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  canDeleteConta,
+  canWriteConta,
+  isViewerConta,
+} from "@/lib/contaPermissions";
 import type { Conta, ContaMembro, ContaPapel } from "@/types/database";
 
 const STORAGE_KEY = "viziom_conta_ativa";
@@ -22,8 +27,14 @@ interface ContaContextValue {
   loading: boolean;
   setContaAtiva: (conta: Conta) => void;
   refreshContas: () => Promise<void>;
+  /** Criar e editar (admin + membro). */
   canWrite: boolean;
+  /** Excluir recursos da conta (somente admin). */
+  canDelete: boolean;
+  /** Admin da conta. */
   isAdmin: boolean;
+  /** Perfil visualizador — somente leitura. */
+  isViewer: boolean;
 }
 
 const ContaContext = createContext<ContaContextValue | null>(null);
@@ -98,8 +109,10 @@ export function ContaProvider({ children }: { children: ReactNode }) {
     return membros.find((m) => m.conta_id === contaAtiva.id)?.papel ?? null;
   }, [contaAtiva, membros]);
 
-  const canWrite = papelAtivo === "admin" || papelAtivo === "membro";
+  const canWrite = canWriteConta(papelAtivo);
+  const canDelete = canDeleteConta(papelAtivo);
   const isAdmin = papelAtivo === "admin";
+  const isViewer = isViewerConta(papelAtivo);
 
   const value = useMemo(
     () => ({
@@ -111,7 +124,9 @@ export function ContaProvider({ children }: { children: ReactNode }) {
       setContaAtiva,
       refreshContas,
       canWrite,
+      canDelete,
       isAdmin,
+      isViewer,
     }),
     [
       contas,
@@ -123,7 +138,9 @@ export function ContaProvider({ children }: { children: ReactNode }) {
       setContaAtiva,
       refreshContas,
       canWrite,
+      canDelete,
       isAdmin,
+      isViewer,
     ]
   );
 

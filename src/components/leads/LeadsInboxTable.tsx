@@ -1,7 +1,7 @@
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Columns3 } from "lucide-react";
-import { MetaOriginBadge } from "@/components/leads/MetaOriginBadge";
+import { LeadOriginBadge } from "@/components/leads/MetaOriginBadge";
 import { LeadsTableColumnPicker } from "@/components/leads/LeadsTableColumnPicker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -73,7 +73,7 @@ function LeadsTableCell({
     case "origem":
       return (
         <span className="flex items-center gap-1">
-          {isMetaOrigin(lead) && <MetaOriginBadge />}
+          <LeadOriginBadge lead={lead} />
           {getOriginLabel(lead)}
         </span>
       );

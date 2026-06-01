@@ -2,6 +2,7 @@ import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useConta } from "@/contexts/ContaContext";
 import { useUsuario } from "@/contexts/UsuarioContext";
+import { isInviteFlowPending } from "@/lib/authInvite";
 import { NoAccessPage } from "@/pages/NoAccessPage";
 import { ContaSuspensaPage } from "@/pages/ContaSuspensaPage";
 
@@ -16,6 +17,10 @@ export function AppAccessGuard({ children }: { children: React.ReactNode }) {
         <p className="text-muted-foreground">Carregando…</p>
       </div>
     );
+  }
+
+  if (isInviteFlowPending()) {
+    return <Navigate to="/auth/convite" replace />;
   }
 
   if (!isProvisioned) {

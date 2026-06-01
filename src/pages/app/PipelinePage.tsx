@@ -4,6 +4,7 @@ import { Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { useConta } from "@/contexts/ContaContext";
+import { useAppRoutes } from "@/hooks/useAppRoutes";
 import { useWhatsappSelection } from "@/hooks/useWhatsappSelection";
 import { JornadaFunnel } from "@/components/leads/JornadaFunnel";
 import { MetaLogoIcon } from "@/components/leads/MetaOriginBadge";
@@ -35,7 +36,8 @@ const emptyEtapa: EtapaForm = {
 };
 
 export function PipelinePage() {
-  const { contaAtiva, canWrite, isAdmin } = useConta();
+  const { contaAtiva, canWrite, canDelete } = useConta();
+  const routes = useAppRoutes();
   const [instancias, setInstancias] = useState<LeadsInstanciaWhatsapp[]>([]);
   const [etapas, setEtapas] = useState<LeadsJornadaEtapa[]>([]);
   const { instanciaId, setInstanciaId } = useWhatsappSelection(contaAtiva?.id, instancias);
@@ -212,7 +214,7 @@ export function PipelinePage() {
   };
 
   const confirmDelete = async () => {
-    if (!deleteEtapa || !isAdmin) return;
+    if (!deleteEtapa || !canDelete) return;
     const { error } = await supabase.from("leads_jornada_etapas").delete().eq("id", deleteEtapa.id);
     if (error) toast.error(error.message);
     else {
@@ -253,7 +255,7 @@ export function PipelinePage() {
               Conecte um WhatsApp para configurar a jornada de compra deste número.
             </p>
             <Button asChild>
-              <Link to="/app/whatsapp">Ir para WhatsApps</Link>
+              <Link to={routes.whatsapp}>Ir para WhatsApps</Link>
             </Button>
           </CardContent>
         </Card>
@@ -282,7 +284,7 @@ export function PipelinePage() {
                 <JornadaFunnel
                   etapas={etapasInstancia}
                   canWrite={canWrite && !reordering}
-                  isAdmin={isAdmin}
+                  canDelete={canDelete}
                   onCreate={openCreate}
                   onEdit={openEditEtapa}
                   onDelete={setDeleteEtapa}

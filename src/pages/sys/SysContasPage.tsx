@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Eye, Pencil, RefreshCw } from "lucide-react";
+import { Eye, Link2, Pencil, RefreshCw, Users } from "lucide-react";
 import { toast } from "sonner";
 import { apiPostAuth } from "@/lib/api";
 import { startImpersonate } from "@/lib/impersonate";
@@ -16,6 +16,12 @@ import { DialogRoot, DialogContent, DialogFooter } from "@/components/ui/dialog"
 const SENHA_PADRAO = "Padrao123456";
 
 type ContaRow = Conta & { planos: Plano | null };
+type ContaDetalhes = {
+  renovacoesPagamento: number;
+  usuarios: number;
+  conexoes: number;
+  leadsConvertidos: number;
+};
 
 function formatDate(iso: string | null) {
   if (!iso) return "—";
@@ -33,9 +39,13 @@ export function SysContasPage() {
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [editing, setEditing] = useState<ContaRow | null>(null);
+  const [detailConta, setDetailConta] = useState<ContaRow | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [adminUserId, setAdminUserId] = useState<string | null>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [contaDetalhes, setContaDetalhes] = useState<ContaDetalhes | null>(null);
 
   const [email, setEmail] = useState("");
   const [telefone, setTelefone] = useState("");
@@ -64,6 +74,24 @@ export function SysContasPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const loadAdminUserId = useCallback(async (contaId: string) => {
+    const { data: membros } = await supabase
+      .from("conta_membros")
+      .select("user_id, papel")
+      .eq("conta_id", contaId)
+      .in("papel", ["admin", "membro"]);
+
+    if (!membros?.length) return null;
+
+    const userIds = membros.map((m) => m.user_id);
+    const { data: usuarios } = await supabase.from("usuarios").select("id, superadmin").in("id", userIds);
+
+    const elegiveis = new Set((usuarios ?? []).filter((u) => !u.superadmin).map((u) => u.id));
+    const adminMembro = membros.find((m) => m.papel === "admin" && elegiveis.has(m.user_id));
+    const qualquerMembro = membros.find((m) => elegiveis.has(m.user_id));
+    return adminMembro?.user_id ?? qualquerMembro?.user_id ?? null;
+  }, []);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,29 +124,49 @@ export function SysContasPage() {
     setEditVencimento(toInputDate(conta.data_vencimento));
     setEditOpen(true);
 
-    const { data: membros } = await supabase
-      .from("conta_membros")
-      .select("user_id, papel")
-      .eq("conta_id", conta.id)
-      .in("papel", ["admin", "membro"]);
+    const userId = await loadAdminUserId(conta.id);
+    setAdminUserId(userId);
+  };
 
-    if (!membros?.length) {
-      setAdminUserId(null);
-      return;
+  const openDetails = async (conta: ContaRow) => {
+    setDetailConta(conta);
+    setDetailsOpen(true);
+    setLoadingDetails(true);
+    setContaDetalhes(null);
+    try {
+      const [renovacoesRes, usuariosRes, conexoesRes, leadsRes, userId] = await Promise.all([
+        supabase
+          .from("system_logs")
+          .select("id", { count: "exact", head: true })
+          .eq("conta_id", conta.id)
+          .eq("tipo", "pagamento_registrado"),
+        supabase
+          .from("conta_membros")
+          .select("id", { count: "exact", head: true })
+          .eq("conta_id", conta.id),
+        supabase
+          .from("leads_instancias_whatsapp")
+          .select("id", { count: "exact", head: true })
+          .eq("conta_id", conta.id),
+        supabase
+          .from("leads_cliques")
+          .select("id", { count: "exact", head: true })
+          .eq("conta_id", conta.id)
+          .eq("status", "convertido")
+          .is("clique_principal_id", null),
+        loadAdminUserId(conta.id),
+      ]);
+
+      setContaDetalhes({
+        renovacoesPagamento: renovacoesRes.count ?? 0,
+        usuarios: usuariosRes.count ?? 0,
+        conexoes: conexoesRes.count ?? 0,
+        leadsConvertidos: leadsRes.count ?? 0,
+      });
+      setAdminUserId(userId);
+    } finally {
+      setLoadingDetails(false);
     }
-
-    const userIds = membros.map((m) => m.user_id);
-    const { data: usuarios } = await supabase
-      .from("usuarios")
-      .select("id, superadmin")
-      .in("id", userIds);
-
-    const elegiveis = new Set(
-      (usuarios ?? []).filter((u) => !u.superadmin).map((u) => u.id)
-    );
-    const adminMembro = membros.find((m) => m.papel === "admin" && elegiveis.has(m.user_id));
-    const qualquerMembro = membros.find((m) => elegiveis.has(m.user_id));
-    setAdminUserId(adminMembro?.user_id ?? qualquerMembro?.user_id ?? null);
   };
 
   const handleSaveEdit = async (e: React.FormEvent) => {
@@ -301,6 +349,83 @@ export function SysContasPage() {
         </DialogContent>
       </DialogRoot>
 
+      <DialogRoot
+        open={detailsOpen}
+        onOpenChange={(open) => {
+          setDetailsOpen(open);
+          if (!open) {
+            setDetailConta(null);
+            setContaDetalhes(null);
+            setAdminUserId(null);
+          }
+        }}
+      >
+        <DialogContent title="Detalhes da conta">
+          {detailConta && (
+            <div className="space-y-4">
+              <div>
+                <p className="text-base font-semibold text-foreground">
+                  {detailConta.onboarding_pendente ? "Onboarding pendente" : detailConta.nome}
+                </p>
+                <p className="text-sm text-muted-foreground">{detailConta.email_contato ?? "Sem e-mail de contato"}</p>
+              </div>
+
+              {loadingDetails ? (
+                <p className="text-sm text-muted-foreground">Carregando detalhes…</p>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-lg border border-border p-3">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Renovações de pagamento
+                    </p>
+                    <p className="mt-1 text-2xl font-semibold text-foreground">
+                      {contaDetalhes?.renovacoesPagamento ?? 0}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border p-3">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Usuários</p>
+                    <p className="mt-1 flex items-center gap-2 text-2xl font-semibold text-foreground">
+                      <Users className="h-5 w-5 text-muted-foreground" />
+                      {contaDetalhes?.usuarios ?? 0}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border p-3">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Conexões</p>
+                    <p className="mt-1 flex items-center gap-2 text-2xl font-semibold text-foreground">
+                      <Link2 className="h-5 w-5 text-muted-foreground" />
+                      {contaDetalhes?.conexoes ?? 0}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border p-3">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Leads convertidos
+                    </p>
+                    <p className="mt-1 text-2xl font-semibold text-foreground">
+                      {contaDetalhes?.leadsConvertidos ?? 0}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <DialogFooter className="flex-wrap justify-between sm:justify-between">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!adminUserId || loadingDetails}
+                  onClick={() => void handleImpersonate()}
+                >
+                  <Eye className="h-4 w-4" />
+                  Entrar como cliente
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setDetailsOpen(false)}>
+                  Fechar
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </DialogRoot>
+
       <Card>
         <CardContent className="pt-6">
           {loading ? (
@@ -314,7 +439,7 @@ export function SysContasPage() {
                   <TableHead>Plano</TableHead>
                   <TableHead>Vencimento</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-12" />
+                  <TableHead className="w-24 text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -339,10 +464,15 @@ export function SysContasPage() {
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="icon" onClick={() => void openEdit(c)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => void openDetails(c)}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => void openEdit(c)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

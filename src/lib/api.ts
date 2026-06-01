@@ -104,3 +104,22 @@ export async function apiGet<T>(
   if (!res.ok) await parseApiError(res);
   return res.json() as Promise<T>;
 }
+
+export async function apiDeleteAuth<T>(path: string): Promise<T> {
+  const base = getBackendUrl();
+  if (!base) throw new Error("VITE_BACKEND_URL não configurado.");
+
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+  if (!token) throw new Error("Sessão expirada. Faça login novamente.");
+
+  const res = await apiFetch(`${base}${path}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) await parseApiError(res);
+  return res.json() as Promise<T>;
+}

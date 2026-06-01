@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
 import { useLeadsInstancias } from "@/hooks/useLeadsInstancias";
-import { APP_ROUTES } from "@/lib/appNavigation";
+import { useAppRoutes } from "@/hooks/useAppRoutes";
 import { cn } from "@/lib/utils";
 
 export function WhatsappHeaderStatus() {
   const { instancias, loading } = useLeadsInstancias(false);
+  const routes = useAppRoutes();
 
   if (loading || instancias.length === 0) return null;
 
@@ -32,7 +33,7 @@ export function WhatsappHeaderStatus() {
 
   return (
     <Link
-      to={APP_ROUTES.whatsapp}
+      to={routes.whatsapp}
       className={cn(
         "shrink-0 rounded-full px-2.5 py-1 text-xs font-medium transition-opacity hover:opacity-90",
         "bg-orange-500/15 text-orange-700 dark:text-orange-400"

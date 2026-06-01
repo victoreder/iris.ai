@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 export function SignUpPage() {
   const { user, loading } = useAuth();
 
-  if (!loading && user) return <Navigate to="/app/dashboard" replace />;
+  if (!loading && user) return <Navigate to="/app" replace />;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">

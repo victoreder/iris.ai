@@ -1,4 +1,4 @@
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 let cachedClient = null;
 
@@ -64,6 +64,28 @@ export async function uploadToS3(key, body, contentType) {
   );
 
   return buildS3PublicUrl(key);
+}
+
+export async function deleteFromS3(key) {
+  const config = getS3Config();
+  if (!config) {
+    throw new Error("S3 não configurado (S3_ENDPOINT, S3_ACCESS_KEY, S3_SECRET_KEY).");
+  }
+
+  const client = getS3Client(config);
+  await client.send(
+    new DeleteObjectCommand({
+      Bucket: config.bucket,
+      Key: key,
+    })
+  );
+}
+
+export function buildAvatarKey(userId, ext = "jpg") {
+  const safeId = String(userId ?? "").trim();
+  if (!safeId) throw new Error("userId inválido.");
+  const safeExt = String(ext ?? "jpg").replace(/[^a-z0-9]/gi, "") || "jpg";
+  return `avatars/${safeId}/avatar.${safeExt}`;
 }
 
 export function extensionFromMime(mime, fallback = "bin") {

@@ -2,14 +2,16 @@ import { Eye } from "lucide-react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useConta } from "@/contexts/ContaContext";
 import { LeadDetailOriginsSection } from "@/components/leads/LeadDetailOriginsSection";
-import { MetaOriginBadge } from "@/components/leads/MetaOriginBadge";
+import { LeadOriginBadge } from "@/components/leads/MetaOriginBadge";
 import {
   buildLeadsListUrlWithUtm,
   LEADS_UTM_LABELS,
   type LeadsUtmField,
 } from "@/lib/leadsUtmFilters";
-import { formatPhoneBR, getOriginLabel, isMetaOrigin } from "@/lib/leadsAnalytics";
+import { contaUrlRef } from "@/lib/appNavigation";
+import { formatPhoneBR, getOriginLabel } from "@/lib/leadsAnalytics";
 import type { LeadsClique, LeadsCliqueOrigem } from "@/types/database";
 
 interface Props {
@@ -27,7 +29,7 @@ function InfoCard({ label, children }: { label: string; children: React.ReactNod
   );
 }
 
-function UtmRow({ field, value }: { field: LeadsUtmField; value: string | null }) {
+function UtmRow({ field, value, contaRef }: { field: LeadsUtmField; value: string | null; contaRef: string }) {
   const label = LEADS_UTM_LABELS[field];
 
   if (!value?.trim()) {
@@ -44,7 +46,7 @@ function UtmRow({ field, value }: { field: LeadsUtmField; value: string | null }
         {label}: <span className="font-medium text-foreground">{value}</span>
       </span>
       <Link
-        to={buildLeadsListUrlWithUtm(field, value)}
+        to={buildLeadsListUrlWithUtm(contaRef, field, value)}
         className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
         title={`Ver leads com ${label}: ${value}`}
         aria-label={`Ver leads com ${label}: ${value}`}
@@ -56,6 +58,8 @@ function UtmRow({ field, value }: { field: LeadsUtmField; value: string | null }
 }
 
 export function LeadDetailGeralPanel({ lead, origens, loadingOrigens }: Props) {
+  const { contaAtiva } = useConta();
+  const contaRef = contaAtiva ? contaUrlRef(contaAtiva) : "";
   const dispositivo = [lead.device_type, lead.browser, lead.os].filter(Boolean).join(" · ") || "—";
 
   return (
@@ -69,7 +73,7 @@ export function LeadDetailGeralPanel({ lead, origens, loadingOrigens }: Props) {
         </InfoCard>
         <InfoCard label="Origem">
           <div className="flex items-center gap-2">
-            {isMetaOrigin(lead) && <MetaOriginBadge />}
+            <LeadOriginBadge lead={lead} />
             <span className="font-medium">{getOriginLabel(lead)}</span>
           </div>
         </InfoCard>
@@ -93,11 +97,11 @@ export function LeadDetailGeralPanel({ lead, origens, loadingOrigens }: Props) {
 
       <InfoCard label="UTMs / atribuição">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <UtmRow field="utm_source" value={lead.utm_source} />
-          <UtmRow field="utm_medium" value={lead.utm_medium} />
-          <UtmRow field="utm_campaign" value={lead.utm_campaign} />
-          <UtmRow field="utm_content" value={lead.utm_content} />
-          <UtmRow field="utm_term" value={lead.utm_term} />
+          <UtmRow field="utm_source" value={lead.utm_source} contaRef={contaRef} />
+          <UtmRow field="utm_medium" value={lead.utm_medium} contaRef={contaRef} />
+          <UtmRow field="utm_campaign" value={lead.utm_campaign} contaRef={contaRef} />
+          <UtmRow field="utm_content" value={lead.utm_content} contaRef={contaRef} />
+          <UtmRow field="utm_term" value={lead.utm_term} contaRef={contaRef} />
         </div>
       </InfoCard>
 

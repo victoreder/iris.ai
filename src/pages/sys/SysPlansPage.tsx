@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import type { PostgrestError } from "@supabase/supabase-js";
 import { slugifyLeadLink } from "@/lib/leadsUrl";
 import type { Plano, PlanoRecorrencia } from "@/types/usuario";
 import { Button } from "@/components/ui/button";
@@ -80,6 +81,12 @@ export function SysPlansPage() {
   };
 
   const parseLimit = (v: string) => (v.trim() === "" ? null : Number(v));
+  const isUniqueViolation = (err: unknown, field?: string) => {
+    const pgErr = err as PostgrestError | null;
+    if (!pgErr || pgErr.code !== "23505") return false;
+    if (!field) return true;
+    return String(pgErr.message ?? "").includes(field) || String(pgErr.details ?? "").includes(field);
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,6 +123,14 @@ export function SysPlansPage() {
       setDialogOpen(false);
       await load();
     } catch (err) {
+      if (isUniqueViolation(err, "slug")) {
+        toast.error("Já existe um plano com este slug. Escolha outro slug.");
+        return;
+      }
+      if (isUniqueViolation(err)) {
+        toast.error("Já existe um plano com estes dados únicos.");
+        return;
+      }
       toast.error(err instanceof Error ? err.message : "Erro ao salvar.");
     } finally {
       setSubmitting(false);

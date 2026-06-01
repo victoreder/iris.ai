@@ -45,7 +45,7 @@ const emptyForm: LinkForm = {
 };
 
 export function CampaignsPage() {
-  const { contaAtiva, canWrite, isAdmin } = useConta();
+  const { contaAtiva, canWrite, canDelete } = useConta();
   const [links, setLinks] = useState<LeadsLink[]>([]);
   const [instancias, setInstancias] = useState<LeadsInstanciaWhatsapp[]>([]);
   const [loading, setLoading] = useState(true);
@@ -145,7 +145,7 @@ export function CampaignsPage() {
   };
 
   const handleDelete = async () => {
-    if (!contaAtiva || !deleteId || !isAdmin) return;
+    if (!contaAtiva || !deleteId || !canDelete) return;
     try {
       await apiPost("/api/leads/excluir-link", { linkId: deleteId }, contaAtiva.id);
       toast.success("Campanha excluída.");
@@ -238,7 +238,7 @@ export function CampaignsPage() {
                             </DropdownMenuItem>
                           </>
                         )}
-                        {isAdmin && (
+                        {canDelete && (
                           <DropdownMenuItem
                             className="text-destructive focus:text-destructive"
                             onClick={() => setDeleteId(l.id)}

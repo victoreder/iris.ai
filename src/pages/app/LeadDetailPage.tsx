@@ -6,13 +6,15 @@ import { LeadConversaChat } from "@/components/leads/LeadConversaChat";
 import { LeadDetailGeralPanel } from "@/components/leads/LeadDetailGeralPanel";
 import { LeadDetailJornadaPanel } from "@/components/leads/LeadDetailJornadaPanel";
 import { resolveLeadOrigens } from "@/lib/leadOrigens";
-import { MetaOriginBadge } from "@/components/leads/MetaOriginBadge";
+import { LeadOriginBadge } from "@/components/leads/MetaOriginBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/badge";
 import { useConta } from "@/contexts/ContaContext";
+import { useAppRoutes } from "@/hooks/useAppRoutes";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { apiPost } from "@/lib/api";
+import { contaUrlRef } from "@/lib/appNavigation";
 import {
   LEAD_DETAIL_TABS,
   leadDetailPath,
@@ -20,7 +22,7 @@ import {
   type LeadDetailTab,
 } from "@/lib/leadDetailTabs";
 import { LEAD_DETAIL_SELECT } from "@/lib/leadsConstants";
-import { formatPhoneBR, isMetaOrigin } from "@/lib/leadsAnalytics";
+import { formatPhoneBR } from "@/lib/leadsAnalytics";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import type {
@@ -42,6 +44,7 @@ export function LeadDetailPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { contaAtiva, canWrite } = useConta();
+  const routes = useAppRoutes();
 
   const tab = parseLeadDetailTab(searchParams.get("tab"));
 
@@ -192,7 +195,7 @@ export function LeadDetailPage() {
     void handleSaveValorVenda(null);
   };
 
-  if (!leadId) return <Navigate to="/app/leads" replace />;
+  if (!leadId) return <Navigate to={routes.leads} replace />;
 
   if (loading) {
     return (
@@ -208,7 +211,7 @@ export function LeadDetailPage() {
       <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
         <p className="text-lg font-medium">Lead não encontrado</p>
         <Button asChild variant="outline">
-          <Link to="/app/leads">Voltar para Leads</Link>
+          <Link to={routes.leads}>Voltar para Leads</Link>
         </Button>
       </div>
     );
@@ -222,7 +225,7 @@ export function LeadDetailPage() {
             variant="ghost"
             size="icon"
             className="mt-0.5 shrink-0"
-            onClick={() => navigate("/app/leads")}
+            onClick={() => navigate(routes.leads)}
             aria-label="Voltar para Leads"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -230,7 +233,7 @@ export function LeadDetailPage() {
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="truncate text-lg font-semibold">{formatPhoneBR(lead.telefone_lead)}</h1>
-              {isMetaOrigin(lead) && <MetaOriginBadge />}
+              <LeadOriginBadge lead={lead} />
               {lead.leads_jornada_etapas?.nome && (
                 <Badge variant="outline" className="font-normal">
                   {lead.leads_jornada_etapas.nome}
@@ -306,11 +309,12 @@ export function LeadDetailPage() {
   );
 }
 
-/** Redireciona URLs legadas ?lead=id para /app/leads/:id */
+/** Redireciona URLs legadas ?lead=id para /app/:conta/leads/:id */
 export function InboxLegacyLeadRedirect() {
   const [searchParams] = useSearchParams();
+  const { contaAtiva } = useConta();
   const legacyId = searchParams.get("lead");
-  if (!legacyId) return null;
+  if (!legacyId || !contaAtiva) return null;
   const tab = parseLeadDetailTab(searchParams.get("tab"));
-  return <Navigate to={leadDetailPath(legacyId, tab)} replace />;
+  return <Navigate to={leadDetailPath(contaUrlRef(contaAtiva), legacyId, tab)} replace />;
 }

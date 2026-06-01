@@ -96,7 +96,10 @@ export async function requireContaAuth(req, res, { minPapel } = {}) {
   const papel = membro.papel;
   const ranks = { visualizador: 0, membro: 1, admin: 2 };
   if (minPapel && ranks[papel] < ranks[minPapel]) {
-    res.status(403).json({ error: "Permissão insuficiente." });
+    const labels = { visualizador: "visualizador", membro: "membro", admin: "administrador" };
+    res.status(403).json({
+      error: `Permissão insuficiente. Esta ação exige perfil ${labels[minPapel] ?? minPapel} da conta.`,
+    });
     return null;
   }
 
