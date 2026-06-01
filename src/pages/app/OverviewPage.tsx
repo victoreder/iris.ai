@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ChevronDown, ChevronUp, Filter, RefreshCw, X } from "lucide-react";
+import { DashboardSetupTourBanner } from "@/components/dashboard/DashboardSetupTourBanner";
 import {
   DashboardConversionHeatmap,
   DashboardFunnelPanel,
@@ -20,7 +21,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/badge";
 import { useConta } from "@/contexts/ContaContext";
+import { useContaSetupStatus } from "@/hooks/useContaSetupStatus";
 import { useLeadsInstancias } from "@/hooks/useLeadsInstancias";
+import { useProductTourOptional } from "@/contexts/ProductTourContext";
 import { LEAD_DETAIL_SELECT } from "@/lib/leadsConstants";
 import { getCanonicalConvertedLeads } from "@/lib/leadPhone";
 import {
@@ -57,6 +60,8 @@ import type { LeadsClique, LeadsJornadaEtapa } from "@/types/database";
 export function OverviewPage() {
   const { contaAtiva } = useConta();
   const { instancias } = useLeadsInstancias(true);
+  const setup = useContaSetupStatus();
+  const productTour = useProductTourOptional();
   const [cliques, setCliques] = useState<LeadsClique[]>([]);
   const [etapas, setEtapas] = useState<LeadsJornadaEtapa[]>([]);
   const [loading, setLoading] = useState(true);
@@ -208,6 +213,13 @@ export function OverviewPage() {
 
   return (
     <div className="space-y-5">
+      {setup.showTourCta && !setup.loading && (
+        <DashboardSetupTourBanner
+          missingText={setup.missingText}
+          onStartTour={() => productTour?.startTour()}
+        />
+      )}
+
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <DashboardDateFilter
           preset={preset}

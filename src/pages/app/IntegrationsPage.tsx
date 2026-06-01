@@ -88,7 +88,11 @@ export function IntegrationsPage() {
         <p className="text-muted-foreground">Meta Conversions API</p>
       </div>
 
-      <Card id={META_PIXEL_CONFIG_HASH} className="max-w-xl scroll-mt-6">
+      <Card
+        id={META_PIXEL_CONFIG_HASH}
+        data-tour="meta-pixel-config"
+        className="max-w-xl scroll-mt-6"
+      >
         <CardHeader>
           <CardTitle className="text-base">Meta Pixel + CAPI</CardTitle>
           <CardDescription>

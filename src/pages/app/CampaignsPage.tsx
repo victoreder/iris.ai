@@ -169,7 +169,11 @@ export function CampaignsPage() {
     <div className="space-y-6">
       <div className="flex justify-end">
         {canWrite && (
-          <Button onClick={openCreate} disabled={instancias.length === 0}>
+          <Button
+            data-tour="campaign-create"
+            onClick={openCreate}
+            disabled={instancias.length === 0}
+          >
             <Plus className="h-4 w-4" /> Nova campanha
           </Button>
         )}

@@ -451,15 +451,17 @@ export function InboxPage() {
       )}
 
       {view === "lista" ? (
-        <LeadsInboxTable
-          leads={leads}
-          columns={tableColumns}
-          contaId={contaAtiva!.id}
-          columnsPickerOpen={columnsPickerOpen}
-          onColumnsPickerOpenChange={setColumnsPickerOpen}
-          onColumnsChange={setTableColumns}
-          onLeadClick={openLeadDetail}
-        />
+        <div data-tour="leads-inbox">
+          <LeadsInboxTable
+            leads={leads}
+            columns={tableColumns}
+            contaId={contaAtiva!.id}
+            columnsPickerOpen={columnsPickerOpen}
+            onColumnsPickerOpenChange={setColumnsPickerOpen}
+            onColumnsChange={setTableColumns}
+            onLeadClick={openLeadDetail}
+          />
+        </div>
       ) : (
         <div className="space-y-3">
           {kanbanInstancia && (

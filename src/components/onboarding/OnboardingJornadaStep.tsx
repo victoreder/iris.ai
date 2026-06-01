@@ -1,20 +1,15 @@
-import { Link } from "react-router-dom";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { useConta } from "@/contexts/ContaContext";
-import { useAppRoutes } from "@/hooks/useAppRoutes";
-import { useWhatsappSelection } from "@/hooks/useWhatsappSelection";
 import { JornadaFunnel } from "@/components/leads/JornadaFunnel";
 import { MetaLogoIcon } from "@/components/leads/MetaOriginBadge";
-import { WhatsappTabs } from "@/components/leads/WhatsappTabs";
 import { LEADS_META_EVENTOS_OPTIONS, META_EVENTO_NENHUM } from "@/lib/leadsMetaEvents";
+import { FieldHint } from "@/components/onboarding/FieldHint";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { DialogRoot, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Input, Label, Select } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import type { LeadsInstanciaWhatsapp, LeadsJornadaEtapa } from "@/types/database";
 
 interface EtapaForm {
@@ -35,39 +30,48 @@ const emptyEtapa: EtapaForm = {
   palavras_chave: [],
 };
 
-export function PipelinePage() {
-  const { contaAtiva, canWrite, canDelete } = useConta();
-  const routes = useAppRoutes();
-  const [instancias, setInstancias] = useState<LeadsInstanciaWhatsapp[]>([]);
+interface OnboardingJornadaStepProps {
+  contaId: string;
+  instancias: LeadsInstanciaWhatsapp[];
+  instanciaIdInicial?: string;
+  onEtapasChange?: () => void;
+}
+
+export function OnboardingJornadaStep({
+  contaId,
+  instancias,
+  instanciaIdInicial,
+  onEtapasChange,
+}: OnboardingJornadaStepProps) {
   const [etapas, setEtapas] = useState<LeadsJornadaEtapa[]>([]);
-  const { instanciaId, setInstanciaId } = useWhatsappSelection(contaAtiva?.id, instancias);
   const [loading, setLoading] = useState(true);
+  const [instanciaId, setInstanciaId] = useState(instanciaIdInicial ?? instancias[0]?.id ?? "");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<LeadsJornadaEtapa | null>(null);
-  const [instanciaDialog, setInstanciaDialog] = useState("");
   const [form, setForm] = useState<EtapaForm>(emptyEtapa);
   const [keywordInput, setKeywordInput] = useState("");
-  const [deleteEtapa, setDeleteEtapa] = useState<LeadsJornadaEtapa | null>(null);
   const [reordering, setReordering] = useState(false);
 
   const load = useCallback(async () => {
-    if (!contaAtiva) return;
     setLoading(true);
-    const [iRes, eRes] = await Promise.all([
-      supabase.from("leads_instancias_whatsapp").select("*").eq("conta_id", contaAtiva.id).order("nome"),
-      supabase.from("leads_jornada_etapas").select("*").eq("conta_id", contaAtiva.id).order("posicao"),
-    ]);
-    const lista = (iRes.data as LeadsInstanciaWhatsapp[]) ?? [];
-    setInstancias(lista);
-    setEtapas((eRes.data as LeadsJornadaEtapa[]) ?? []);
+    const { data } = await supabase
+      .from("leads_jornada_etapas")
+      .select("*")
+      .eq("conta_id", contaId)
+      .order("posicao", { ascending: true });
+    setEtapas((data as LeadsJornadaEtapa[]) ?? []);
     setLoading(false);
-  }, [contaAtiva?.id]);
+    onEtapasChange?.();
+  }, [contaId, onEtapasChange]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  const instanciaAtiva = instancias.find((i) => i.id === instanciaId) ?? null;
+  useEffect(() => {
+    if (instanciaIdInicial) setInstanciaId(instanciaIdInicial);
+    else if (!instanciaId && instancias[0]?.id) setInstanciaId(instancias[0].id);
+  }, [instanciaIdInicial, instancias, instanciaId]);
 
   const etapasInstancia = useMemo(
     () =>
@@ -76,24 +80,6 @@ export function PipelinePage() {
         .sort((a, b) => a.posicao - b.posicao),
     [etapas, instanciaId]
   );
-
-  const etapaCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const etapa of etapas) {
-      counts[etapa.instancia_id] = (counts[etapa.instancia_id] ?? 0) + 1;
-    }
-    return counts;
-  }, [etapas]);
-
-  const somenteEtapaPadrao = useMemo(() => {
-    const result: Record<string, boolean> = {};
-    for (const instancia of instancias) {
-      const list = etapas.filter((e) => e.instancia_id === instancia.id);
-      result[instancia.id] =
-        list.length === 0 || (list.length === 1 && list[0].primeiro_contato);
-    }
-    return result;
-  }, [instancias, etapas]);
 
   const nextPosicao = useMemo(() => {
     if (!instanciaId) return 1;
@@ -105,7 +91,6 @@ export function PipelinePage() {
   const openCreate = () => {
     if (!instanciaId) return;
     setEditing(null);
-    setInstanciaDialog(instanciaId);
     setForm({ ...emptyEtapa });
     setKeywordInput("");
     setDialogOpen(true);
@@ -113,7 +98,6 @@ export function PipelinePage() {
 
   const openEditEtapa = (etapa: LeadsJornadaEtapa) => {
     setEditing(etapa);
-    setInstanciaDialog(etapa.instancia_id);
     setForm({
       nome: etapa.nome,
       evento_meta: etapa.evento_meta ?? META_EVENTO_NENHUM,
@@ -134,7 +118,7 @@ export function PipelinePage() {
   };
 
   const saveEtapa = async () => {
-    if (!contaAtiva || !canWrite) return;
+    if (!instanciaId) return;
     if (!form.nome.trim()) {
       toast.error("Nome obrigatório.");
       return;
@@ -149,8 +133,8 @@ export function PipelinePage() {
     }
 
     const payload = {
-      conta_id: contaAtiva.id,
-      instancia_id: instanciaDialog,
+      conta_id: contaId,
+      instancia_id: instanciaId,
       nome: form.nome.trim(),
       evento_meta: form.evento_meta,
       primeiro_contato: form.primeiro_contato,
@@ -183,15 +167,12 @@ export function PipelinePage() {
   };
 
   const handleReorder = async (ordered: LeadsJornadaEtapa[]) => {
-    if (!contaAtiva || !canWrite || reordering) return;
-
+    if (reordering) return;
     const withPositions = ordered.map((e, i) => ({ ...e, posicao: i + 1 }));
-
     setEtapas((prev) => {
       const rest = prev.filter((e) => e.instancia_id !== instanciaId);
       return [...rest, ...withPositions];
     });
-
     setReordering(true);
     try {
       const results = await Promise.all(
@@ -200,7 +181,7 @@ export function PipelinePage() {
             .from("leads_jornada_etapas")
             .update({ posicao: e.posicao, updated_at: new Date().toISOString() })
             .eq("id", e.id)
-            .eq("conta_id", contaAtiva.id)
+            .eq("conta_id", contaId)
         )
       );
       const failed = results.find((r) => r.error);
@@ -213,127 +194,106 @@ export function PipelinePage() {
     }
   };
 
-  const confirmDelete = async () => {
-    if (!deleteEtapa || !canDelete) return;
-    const { error } = await supabase.from("leads_jornada_etapas").delete().eq("id", deleteEtapa.id);
-    if (error) toast.error(error.message);
-    else {
-      toast.success("Etapa excluída.");
-      setDeleteEtapa(null);
-      void load();
-    }
-  };
+  if (instancias.length === 0) {
+    return (
+      <p className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+        Conecte um WhatsApp na etapa anterior para configurar a jornada de vendas.
+      </p>
+    );
+  }
 
   if (loading) {
     return (
-      <div className="flex min-h-48 items-center justify-center">
+      <div className="flex min-h-40 items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <p className="text-muted-foreground">
-          {instancias.length === 1 && instanciaAtiva ? (
-            <>
-              Funil do <span className="font-medium text-foreground">{instanciaAtiva.nome}</span>
-              {instanciaAtiva.telefone ? ` · ${instanciaAtiva.telefone}` : ""}
-            </>
-          ) : (
-            "Defina as etapas do funil por WhatsApp — palavras-chave e eventos Meta."
-          )}
-        </p>
-      </div>
-
-      {instancias.length === 0 ? (
-        <Card>
-          <CardContent className="space-y-3 py-8 text-center">
-            <p className="font-medium">Nenhum WhatsApp cadastrado</p>
-            <p className="text-sm text-muted-foreground">
-              Conecte um WhatsApp para configurar a jornada de compra deste número.
-            </p>
-            <Button asChild>
-              <Link to={routes.whatsapp}>Ir para WhatsApps</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <>
-          {instanciaAtiva && (
-            <Card data-tour="journey-funnel">
-              {(instancias.length > 1 || (etapasInstancia.length > 0 && canWrite)) && (
-                <div className="flex flex-wrap items-end justify-between gap-3 border-b border-border px-6 pt-4">
-                  <WhatsappTabs
-                    instancias={instancias}
-                    value={instanciaId}
-                    onChange={setInstanciaId}
-                    etapaCounts={etapaCounts}
-                    somenteEtapaPadrao={somenteEtapaPadrao}
-                  />
-                  {etapasInstancia.length > 0 && canWrite && (
-                    <Button
-                      data-tour="journey-new-stage"
-                      className="mb-2 shrink-0"
-                      onClick={openCreate}
-                    >
-                      <Plus className="h-4 w-4" />
-                      Nova etapa
-                    </Button>
-                  )}
-                </div>
-              )}
-              <CardContent className="pt-6">
-                <JornadaFunnel
-                  etapas={etapasInstancia}
-                  canWrite={canWrite && !reordering}
-                  canDelete={canDelete}
-                  onCreate={openCreate}
-                  onEdit={openEditEtapa}
-                  onDelete={setDeleteEtapa}
-                  onReorder={(ordered) => void handleReorder(ordered)}
-                />
-              </CardContent>
-            </Card>
-          )}
-        </>
+    <>
+      {instancias.length > 1 && (
+        <div className="mb-4 space-y-2">
+          <Label>WhatsApp</Label>
+          <Select value={instanciaId} onChange={(e) => setInstanciaId(e.target.value)}>
+            {instancias.map((i) => (
+              <option key={i.id} value={i.id}>
+                {i.nome}
+                {i.telefone ? ` · ${i.telefone}` : ""}
+              </option>
+            ))}
+          </Select>
+        </div>
       )}
+
+      <div className="rounded-xl border border-border bg-muted/20 p-4">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm text-muted-foreground">
+            A etapa de contato inicial já foi criada automaticamente.
+          </p>
+          <Button type="button" size="sm" onClick={openCreate}>
+            <Plus className="h-4 w-4" />
+            Nova etapa
+          </Button>
+        </div>
+        <JornadaFunnel
+          etapas={etapasInstancia}
+          canWrite
+          canDelete={false}
+          onCreate={openCreate}
+          onEdit={openEditEtapa}
+          onDelete={() => {}}
+          onReorder={(ordered) => void handleReorder(ordered)}
+        />
+      </div>
 
       <DialogRoot open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent title={editing ? "Editar etapa" : "Nova etapa"}>
           <div className="space-y-4">
             <div className="space-y-1">
-              <Label>Nome</Label>
+              <Label>Nome da etapa</Label>
               <Input
                 value={form.nome}
                 onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))}
                 disabled={Boolean(editing?.primeiro_contato && form.primeiro_contato)}
+                placeholder="Ex.: Proposta enviada"
               />
             </div>
 
             {!editing && (
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={form.primeiro_contato}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      primeiro_contato: e.target.checked,
-                      evento_meta: e.target.checked ? META_EVENTO_NENHUM : f.evento_meta,
-                      palavras_chave: e.target.checked ? [] : f.palavras_chave,
-                      representa_venda: e.target.checked ? false : f.representa_venda,
-                    }))
-                  }
-                />
-                Contato inicial (única por WhatsApp)
-              </label>
+              <div className="space-y-2 rounded-lg border border-border/80 bg-muted/20 p-3">
+                <label className="flex cursor-pointer items-start gap-2 text-sm font-medium">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={form.primeiro_contato}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        primeiro_contato: e.target.checked,
+                        evento_meta: e.target.checked ? META_EVENTO_NENHUM : f.evento_meta,
+                        palavras_chave: e.target.checked ? [] : f.palavras_chave,
+                        representa_venda: e.target.checked ? false : f.representa_venda,
+                      }))
+                    }
+                  />
+                  Contato inicial
+                </label>
+                <FieldHint>
+                  Marque essa opção quando essa for a etapa que representa a primeira interação do lead
+                  com a empresa, o contato inicial.
+                </FieldHint>
+              </div>
             )}
 
             {!form.primeiro_contato && (
               <div className="space-y-2">
                 <Label>Palavras-chave</Label>
+                <FieldHint>
+                  Coloque as palavras-chaves que o atendente irá enviar no WhatsApp durante a conversa que
+                  marcam que chegou nessa etapa. O Viziom identifica automaticamente e move o lead para esta
+                  etapa.
+                </FieldHint>
                 <div className="flex gap-2">
                   <Input
                     value={keywordInput}
@@ -364,32 +324,33 @@ export function PipelinePage() {
                     </Badge>
                   ))}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Quando a Viziom identificar que alguma dessas palavras-chaves foram enviadas pelo
-                  atendente, o lead será alterado para essa jornada.
-                </p>
               </div>
             )}
 
             {!form.primeiro_contato && (
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={form.representa_venda}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      representa_venda: e.target.checked,
-                    }))
-                  }
-                />
-                Essa etapa representa uma venda
-              </label>
+              <div className="space-y-2 rounded-lg border border-border/80 bg-muted/20 p-3">
+                <label className="flex cursor-pointer items-start gap-2 text-sm font-medium">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={form.representa_venda}
+                    onChange={(e) => setForm((f) => ({ ...f, representa_venda: e.target.checked }))}
+                  />
+                  Essa etapa representa uma venda
+                </label>
+                <FieldHint>
+                  Marque essa opção quando essa etapa representa uma venda no seu funil.
+                </FieldHint>
+              </div>
             )}
 
             {form.representa_venda && (
               <div className="space-y-1">
-                <Label>Valor R$</Label>
+                <Label>Valor da venda (R$)</Label>
+                <FieldHint>
+                  Informe o valor padrão de venda dos leads. Esse valor pode ser editado individualmente para
+                  cada lead depois.
+                </FieldHint>
                 <Input
                   type="number"
                   step="0.01"
@@ -402,8 +363,11 @@ export function PipelinePage() {
             <div className="space-y-1">
               <Label className="flex items-center gap-1.5">
                 <MetaLogoIcon className="h-4 w-auto" />
-                Evento Meta
+                Evento da Meta
               </Label>
+              <FieldHint>
+                Selecione qual evento deseja enviar para a Meta quando o lead for movido para essa etapa.
+              </FieldHint>
               <Select
                 value={form.evento_meta}
                 onChange={(e) => setForm((f) => ({ ...f, evento_meta: e.target.value }))}
@@ -414,10 +378,6 @@ export function PipelinePage() {
                   </option>
                 ))}
               </Select>
-              <p className="text-xs text-muted-foreground">
-                Seleciona qual evento de conversão da meta essa etapa está associada. Quando um lead
-                for alterado para essa etapa, automaticamente esse evento será enviado para a meta.
-              </p>
             </div>
           </div>
           <DialogFooter>
@@ -428,22 +388,6 @@ export function PipelinePage() {
           </DialogFooter>
         </DialogContent>
       </DialogRoot>
-
-      <DialogRoot open={!!deleteEtapa} onOpenChange={(v) => !v && setDeleteEtapa(null)}>
-        <DialogContent
-          title="Excluir etapa"
-          description="Leads nesta etapa ficarão sem etapa atribuída."
-        >
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteEtapa(null)}>
-              Cancelar
-            </Button>
-            <Button variant="destructive" onClick={() => void confirmDelete()}>
-              Excluir
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </DialogRoot>
-    </div>
+    </>
   );
 }

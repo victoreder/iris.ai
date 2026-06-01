@@ -19,10 +19,10 @@ export function DialogContent({
 }) {
   return (
     <Dialog.Portal>
-      <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
+      <Dialog.Overlay className="fixed inset-0 z-[110] bg-black/50" />
       <Dialog.Content
         className={cn(
-          "fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-full max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border border-border bg-card p-6 shadow-lg",
+          "fixed left-1/2 top-1/2 z-[110] max-h-[90vh] w-full max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border border-border bg-card p-6 shadow-lg",
           className
         )}
         {...(!description ? { "aria-describedby": undefined } : {})}

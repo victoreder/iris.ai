@@ -8,6 +8,9 @@ import { getPageTitle } from "@/lib/appNavigation";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { isImpersonating } from "@/lib/impersonate";
 import { cn } from "@/lib/utils";
+import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
+import { OnboardingWaitingOverlay } from "@/components/onboarding/OnboardingWaitingOverlay";
+import { ProductTourOverlay } from "@/components/product-tour/ProductTourOverlay";
 
 const SIDEBAR_KEY = "viziom-sidebar-collapsed";
 
@@ -21,7 +24,7 @@ function readCollapsed(): boolean {
 
 export function AppLayout() {
   const location = useLocation();
-  const { contaAtiva, loading, isViewer } = useConta();
+  const { contaAtiva, loading, isViewer, isAdmin } = useConta();
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -72,6 +75,10 @@ export function AppLayout() {
           </div>
         </main>
       </div>
+
+      {contaAtiva.onboarding_pendente && isAdmin && <OnboardingWizard />}
+      {contaAtiva.onboarding_pendente && !isAdmin && <OnboardingWaitingOverlay />}
+      <ProductTourOverlay />
     </div>
   );
 }

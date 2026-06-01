@@ -47,10 +47,6 @@ export function AppLayoutGuard() {
     return <NoAccessPage />;
   }
 
-  if (contaAtiva.onboarding_pendente) {
-    return <Navigate to="/onboarding" replace />;
-  }
-
   if (contaAtiva.status === "suspensa" && !isSuperadmin) {
     return <ContaSuspensaPage />;
   }

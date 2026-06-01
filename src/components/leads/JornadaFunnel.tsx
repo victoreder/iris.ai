@@ -43,14 +43,17 @@ export function JornadaFunnel({
 
   if (sorted.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 px-6 py-16 text-center">
+      <div
+        data-tour="journey-funnel"
+        className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 px-6 py-16 text-center"
+      >
         <p className="font-medium">Nenhuma etapa neste funil</p>
         <p className="mt-1 max-w-sm text-sm text-muted-foreground">
           Adicione etapas como proposta, negociação e venda. A etapa de contato inicial é criada
           automaticamente ao conectar o WhatsApp.
         </p>
         {canWrite && (
-          <Button className="mt-4" onClick={onCreate}>
+          <Button data-tour="journey-new-stage" className="mt-4" onClick={onCreate}>
             <Plus className="h-4 w-4" />
             Criar primeira etapa
           </Button>
@@ -85,6 +88,9 @@ export function JornadaFunnel({
     }
     setDraggedId(null);
   };
+
+  const editTourIndex = items.findIndex((e) => !e.primeiro_contato);
+  const editTourIdx = editTourIndex >= 0 ? editTourIndex : 0;
 
   return (
     <div className="flex flex-col items-center py-4">
@@ -168,6 +174,7 @@ export function JornadaFunnel({
                         variant="ghost"
                         size="icon"
                         title="Editar etapa"
+                        data-tour={idx === editTourIdx ? "journey-edit-stage" : undefined}
                         onClick={() => onEdit(etapa)}
                       >
                         <Pencil className="h-4 w-4" />

@@ -24,6 +24,7 @@ import leadsAtualizarValorVendaLeadHandler from "../api/leads/atualizar-valor-ve
 import adminCriarClienteHandler from "../api/admin/criar-cliente.js";
 import adminAtualizarContaHandler from "../api/admin/atualizar-conta.js";
 import adminRegistrarPagamentoHandler from "../api/admin/registrar-pagamento.js";
+import adminAtivarOnboardingHandler from "../api/admin/ativar-onboarding.js";
 import adminImpersonarHandler from "../api/admin/impersonar.js";
 import contaAdicionarMembroHandler from "../api/conta/adicionar-membro.js";
 import contaAtualizarContaHandler from "../api/conta/atualizar-conta.js";
@@ -68,6 +69,7 @@ post("/api/leads/atualizar-valor-venda-lead", leadsAtualizarValorVendaLeadHandle
 post("/api/admin/criar-cliente", adminCriarClienteHandler);
 post("/api/admin/atualizar-conta", adminAtualizarContaHandler);
 post("/api/admin/registrar-pagamento", adminRegistrarPagamentoHandler);
+post("/api/admin/ativar-onboarding", adminAtivarOnboardingHandler);
 post("/api/admin/impersonar", adminImpersonarHandler);
 post("/api/conta/adicionar-membro", contaAdicionarMembroHandler);
 post("/api/conta/atualizar-conta", contaAtualizarContaHandler);

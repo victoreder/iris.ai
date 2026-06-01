@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Eye, Link2, Pencil, RefreshCw, Users } from "lucide-react";
+import { Eye, Link2, Pencil, RotateCcw, Users } from "lucide-react";
 import { toast } from "sonner";
 import { apiPostAuth } from "@/lib/api";
 import { startImpersonate } from "@/lib/impersonate";
@@ -191,16 +191,27 @@ export function SysContasPage() {
     }
   };
 
-  const handleRenovar = async () => {
+  const handleAtivarOnboarding = async () => {
     if (!editing) return;
+    if (editing.onboarding_pendente) {
+      toast.message("Esta conta já está em onboarding.");
+      return;
+    }
+    if (
+      !confirm(
+        `Reativar onboarding para "${editing.nome}"? O cliente precisará concluir o fluxo novamente.`
+      )
+    ) {
+      return;
+    }
     setSubmitting(true);
     try {
-      await apiPostAuth("/api/admin/registrar-pagamento", { contaId: editing.id });
-      toast.success("Pagamento registrado — vencimento estendido.");
+      await apiPostAuth("/api/admin/ativar-onboarding", { contaId: editing.id });
+      toast.success("Onboarding reativado.");
       setEditOpen(false);
       await load();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erro ao renovar.");
+      toast.error(err instanceof Error ? err.message : "Erro ao ativar onboarding.");
     } finally {
       setSubmitting(false);
     }
@@ -328,11 +339,11 @@ export function SysContasPage() {
                   <Button
                     type="button"
                     variant="outline"
-                    disabled={submitting}
-                    onClick={() => void handleRenovar()}
+                    disabled={submitting || editing.onboarding_pendente}
+                    onClick={() => void handleAtivarOnboarding()}
                   >
-                    <RefreshCw className="h-4 w-4" />
-                    Registrar pagamento
+                    <RotateCcw className="h-4 w-4" />
+                    Ativar onboarding
                   </Button>
                 </div>
                 <div className="flex gap-2">

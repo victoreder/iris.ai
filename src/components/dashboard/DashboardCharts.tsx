@@ -222,7 +222,7 @@ export function DashboardKpiStrip({
   const taxa = total > 0 ? Math.round((vendas / total) * 100) : 0;
 
   return (
-    <div className="flex flex-col gap-3">
+    <div data-tour="dashboard-kpis" className="flex flex-col gap-3">
       <Card>
         <CardContent className="flex items-center justify-between pt-5">
           <div>

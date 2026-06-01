@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { LogOut, MessageCircle, Settings, User } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,17 +15,27 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/layout/UserAvatar";
+import { useProductTourOptional } from "@/contexts/ProductTourContext";
 
 export function ProfileMenu() {
   const { user, signOut } = useAuth();
   const { usuario } = useUsuario();
   const routes = useAppRoutes();
+  const tour = useProductTourOptional();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const tourProfileStep = tour?.isProfileStep ?? false;
 
   const photoUrl = getAvatarPublicUrl(usuario?.foto_url);
   const displayName = usuario?.nome ?? user?.email ?? "Usuário";
 
   return (
-    <DropdownMenu>
+    <DropdownMenu
+      open={tourProfileStep ? true : menuOpen}
+      onOpenChange={(open) => {
+        if (tourProfileStep) return;
+        setMenuOpen(open);
+      }}
+    >
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="rounded-full p-0">
           <UserAvatar
@@ -54,7 +65,7 @@ export function ProfileMenu() {
             Configurações
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
+        <DropdownMenuItem asChild data-tour="profile-whatsapp">
           <Link to={routes.whatsapp}>
             <MessageCircle className="h-4 w-4" />
             WhatsApps

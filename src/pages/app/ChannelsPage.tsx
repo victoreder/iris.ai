@@ -259,6 +259,7 @@ export function ChannelsPage() {
         </div>
         {isAdmin && (
           <Button
+            data-tour="whatsapp-create"
             onClick={() => setCreateOpen(true)}
             disabled={busy === "create" || atLimit}
             title={atLimit ? "Limite do plano atingido" : undefined}
@@ -291,7 +292,7 @@ export function ChannelsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {instancias.map((i) => (
+            {instancias.map((i, index) => (
               <TableRow key={i.id}>
                 <TableCell className="font-medium">{i.nome}</TableCell>
                 <TableCell>{i.telefone ?? "—"}</TableCell>
@@ -304,6 +305,7 @@ export function ChannelsPage() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        data-tour={index === 0 ? "whatsapp-qr" : undefined}
                         disabled={busy === `qr-${i.id}`}
                         onClick={() => void openQr(i.id)}
                         title="QR Code"
@@ -432,7 +434,7 @@ export function ChannelsPage() {
                 <p className="text-sm">Gerando QR Code…</p>
               </div>
             ) : qrData?.base64 ? (
-              <>
+              <div data-tour="whatsapp-qr-panel" className="flex w-full flex-col items-center">
                 <img
                   src={qrImageSrc(qrData.base64)}
                   alt="QR Code WhatsApp"
@@ -465,7 +467,7 @@ export function ChannelsPage() {
                     </Button>
                   </div>
                 )}
-              </>
+              </div>
             ) : (
               <p className="text-center text-sm text-muted-foreground">
                 Não foi possível carregar o QR Code. Feche e tente novamente.

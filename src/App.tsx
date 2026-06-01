@@ -2,6 +2,7 @@ import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import { Toaster } from "sonner";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ContaProvider } from "@/contexts/ContaContext";
+import { ProductTourProvider } from "@/contexts/ProductTourContext";
 import { UsuarioProvider } from "@/contexts/UsuarioContext";
 import { AppLayout } from "@/layouts/AppLayout";
 import { SettingsLayout } from "@/layouts/SettingsLayout";
@@ -65,6 +66,7 @@ export default function App() {
     <AuthProvider>
       <UsuarioProvider>
         <ContaProvider>
+          <ProductTourProvider>
           <Routes>
             <Route path="/l/:slug" element={<LeadRedirect />} />
             <Route path="/q/:token" element={<QrConnectPage />} />
@@ -161,6 +163,7 @@ export default function App() {
           </Routes>
           <Toaster position="top-right" richColors />
           <ImpersonateBanner />
+          </ProductTourProvider>
         </ContaProvider>
       </UsuarioProvider>
     </AuthProvider>
