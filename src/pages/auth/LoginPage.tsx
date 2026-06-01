@@ -83,6 +83,15 @@ export function LoginPage() {
               Saiba mais
             </Link>
           </p>
+          <p className="mt-3 text-center text-xs text-muted-foreground">
+            <Link to="/termos-de-uso" className="hover:text-foreground hover:underline">
+              Termos de uso
+            </Link>
+            {" · "}
+            <Link to="/politica-de-privacidade" className="hover:text-foreground hover:underline">
+              Política de privacidade
+            </Link>
+          </p>
         </CardContent>
       </Card>
     </div>

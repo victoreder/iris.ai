@@ -37,6 +37,9 @@ import { OnboardingPage } from "@/pages/OnboardingPage";
 import { ImpersonateBanner } from "@/components/ImpersonateBanner";
 import { AppLegacyRedirect, AppRootRedirect } from "@/components/AppLegacyRedirect";
 import { ContaUrlSync } from "@/components/ContaUrlSync";
+import { LegalLayout } from "@/layouts/LegalLayout";
+import { PoliticaPrivacidadePage } from "@/pages/legal/PoliticaPrivacidadePage";
+import { TermosDeUsoPage } from "@/pages/legal/TermosDeUsoPage";
 
 function SysLegacyRedirect() {
   const { pathname, search, hash } = useLocation();
@@ -70,6 +73,10 @@ export default function App() {
           <Routes>
             <Route path="/l/:slug" element={<LeadRedirect />} />
             <Route path="/q/:token" element={<QrConnectPage />} />
+            <Route element={<LegalLayout />}>
+              <Route path="/termos-de-uso" element={<TermosDeUsoPage />} />
+              <Route path="/politica-de-privacidade" element={<PoliticaPrivacidadePage />} />
+            </Route>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/auth/convite" element={<InviteAcceptPage />} />
             <Route path="/signup" element={<SignUpPage />} />

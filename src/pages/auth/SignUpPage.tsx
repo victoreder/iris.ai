@@ -28,6 +28,15 @@ export function SignUpPage() {
           <Button asChild className="w-full">
             <Link to="/login">Ir para login</Link>
           </Button>
+          <p className="text-center text-xs text-muted-foreground">
+            <Link to="/termos-de-uso" className="hover:text-foreground hover:underline">
+              Termos de uso
+            </Link>
+            {" · "}
+            <Link to="/politica-de-privacidade" className="hover:text-foreground hover:underline">
+              Política de privacidade
+            </Link>
+          </p>
         </CardContent>
       </Card>
     </div>
