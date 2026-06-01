@@ -5,13 +5,57 @@ export type DatePreset =
   | "mes_passado"
   | "hoje"
   | "ultimos_7"
+  | "ultimos_14"
   | "ultimos_30"
   | "todo"
   | "personalizado";
 
+export const DASHBOARD_PERIOD_LABELS: Record<DatePreset, string> = {
+  este_mes: "Este mês",
+  mes_passado: "Mês passado",
+  hoje: "Hoje",
+  ultimos_7: "7 dias",
+  ultimos_14: "14 dias",
+  ultimos_30: "30 dias",
+  todo: "Todo período",
+  personalizado: "Personalizado",
+};
+
+export const DASHBOARD_QUICK_DATE_PRESETS: DatePreset[] = ["ultimos_7", "ultimos_14", "ultimos_30"];
+
+export const DASHBOARD_EXTRA_DATE_PRESETS: DatePreset[] = [
+  "este_mes",
+  "mes_passado",
+  "hoje",
+  "todo",
+];
+
 export interface DateRange {
   from: Date;
   to: Date;
+}
+
+function toDayStart(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+export function dayKeyFromDate(d: Date): { date: string; sortKey: number } {
+  const date = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+  const sortKey = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+  return { date, sortKey };
+}
+
+export function eachDayInRange(range: DateRange): { date: string; sortKey: number }[] {
+  const days: { date: string; sortKey: number }[] = [];
+  const cur = toDayStart(range.from);
+  const end = toDayStart(range.to);
+
+  while (cur <= end) {
+    days.push(dayKeyFromDate(cur));
+    cur.setDate(cur.getDate() + 1);
+  }
+
+  return days;
 }
 
 export function getDateRangeFromPreset(
@@ -29,6 +73,11 @@ export function getDateRangeFromPreset(
     case "ultimos_7": {
       const from = new Date(now);
       from.setDate(from.getDate() - 6);
+      return { from: startOfDay(from), to: endOfDay(now) };
+    }
+    case "ultimos_14": {
+      const from = new Date(now);
+      from.setDate(from.getDate() - 13);
       return { from: startOfDay(from), to: endOfDay(now) };
     }
     case "ultimos_30": {
@@ -166,6 +215,172 @@ export function getLeadInstanciaId(c: LeadsClique): string | null {
   return c.instancia_id ?? c.leads_links?.instancia_id ?? null;
 }
 
+export function isLeadInPeriod(c: LeadsClique, from: Date, to: Date): boolean {
+  const ref = c.convertido_at ?? c.created_at;
+  const d = new Date(ref);
+  return d >= from && d <= to;
+}
+
+export function aggregateTopCampaigns(
+  cliques: LeadsClique[],
+  limit = 8
+): { nome: string; count: number }[] {
+  const map = new Map<string, number>();
+  for (const c of cliques) {
+    const nome = c.leads_links?.nome ?? "WhatsApp direto";
+    map.set(nome, (map.get(nome) ?? 0) + 1);
+  }
+  return Array.from(map.entries())
+    .map(([nome, count]) => ({ nome, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit);
+}
+
+export function countLeadsInSaleStage(cliques: LeadsClique[]): number {
+  return cliques.filter((c) => c.leads_jornada_etapas?.representa_venda).length;
+}
+
+export const LEADS_ORIGIN_CHART_COLORS = {
+  meta: "#0081FB",
+  google: "#22c55e",
+  outras: "#7c3aed",
+  semRastreio: "#64748b",
+} as const;
+
+export const LEADS_ORIGIN_STACK_SERIES = [
+  { key: "meta", name: "Meta Ads", color: LEADS_ORIGIN_CHART_COLORS.meta },
+  { key: "google", name: "Google Ads", color: LEADS_ORIGIN_CHART_COLORS.google },
+  { key: "outras", name: "Outras origens", color: LEADS_ORIGIN_CHART_COLORS.outras },
+  { key: "semRastreio", name: "Sem rastreio", color: LEADS_ORIGIN_CHART_COLORS.semRastreio },
+] as const;
+
+export interface LeadsByDayOriginRow {
+  date: string;
+  sortKey: number;
+  meta: number;
+  google: number;
+  outras: number;
+  semRastreio: number;
+  total: number;
+}
+
+export function originMetricsToChartData(metrics: LeadsOriginMetrics) {
+  return [
+    { name: "Meta Ads", value: metrics.meta, color: LEADS_ORIGIN_CHART_COLORS.meta },
+    { name: "Google Ads", value: metrics.google, color: LEADS_ORIGIN_CHART_COLORS.google },
+    { name: "Outras origens", value: metrics.outras, color: LEADS_ORIGIN_CHART_COLORS.outras },
+    { name: "Sem rastreio", value: metrics.semRastreio, color: LEADS_ORIGIN_CHART_COLORS.semRastreio },
+  ];
+}
+
+export function getPreviousDateRange(range: DateRange): DateRange {
+  const lengthMs = range.to.getTime() - range.from.getTime();
+  const prevTo = new Date(range.from.getTime() - 1);
+  const prevFrom = new Date(prevTo.getTime() - lengthMs);
+  return { from: prevFrom, to: prevTo };
+}
+
+export function sumReceitaEstimada(cliques: LeadsClique[]): number {
+  let total = 0;
+  for (const c of cliques) {
+    if (!c.leads_jornada_etapas?.representa_venda) continue;
+    const valor = c.valor_venda != null
+      ? Number(c.valor_venda)
+      : c.leads_jornada_etapas.valor_venda != null
+        ? Number(c.leads_jornada_etapas.valor_venda)
+        : null;
+    if (valor != null && !Number.isNaN(valor)) total += valor;
+  }
+  return total;
+}
+
+export interface PeriodSnapshot {
+  leads: number;
+  vendas: number;
+  receita: number;
+  meta: number;
+  google: number;
+}
+
+export function buildPeriodSnapshot(cliques: LeadsClique[]): PeriodSnapshot {
+  const metrics = aggregateLeadsByOrigin(cliques);
+  return {
+    leads: cliques.length,
+    vendas: countLeadsInSaleStage(cliques),
+    receita: sumReceitaEstimada(cliques),
+    meta: metrics.meta,
+    google: metrics.google,
+  };
+}
+
+export const HEATMAP_DAY_LABELS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"] as const;
+export const HEATMAP_DAY_ORDER = [1, 2, 3, 4, 5, 6, 0] as const;
+export const HEATMAP_HOURS = Array.from({ length: 15 }, (_, i) => i + 8);
+
+export interface HeatmapCell {
+  dayLabel: string;
+  hour: number;
+  count: number;
+}
+
+export function leadsHeatmapData(cliques: LeadsClique[]): HeatmapCell[] {
+  const matrix = Array.from({ length: 7 }, () => Array(24).fill(0));
+
+  for (const c of cliques) {
+    const d = new Date(c.convertido_at ?? c.created_at);
+    matrix[d.getDay()][d.getHours()] += 1;
+  }
+
+  const cells: HeatmapCell[] = [];
+  for (let row = 0; row < HEATMAP_DAY_ORDER.length; row++) {
+    const dayIndex = HEATMAP_DAY_ORDER[row];
+    for (const hour of HEATMAP_HOURS) {
+      cells.push({
+        dayLabel: HEATMAP_DAY_LABELS[row],
+        hour,
+        count: matrix[dayIndex][hour],
+      });
+    }
+  }
+  return cells;
+}
+
+export function heatmapMaxCount(cells: HeatmapCell[]): number {
+  return cells.reduce((max, c) => Math.max(max, c.count), 0);
+}
+
+export function receitaByDay(
+  cliques: LeadsClique[],
+  range?: DateRange
+): { date: string; receita: number; sortKey: number }[] {
+  const map = new Map<string, { receita: number; sortKey: number }>();
+
+  for (const c of cliques) {
+    if (!c.leads_jornada_etapas?.representa_venda) continue;
+    const valor = c.valor_venda != null
+      ? Number(c.valor_venda)
+      : c.leads_jornada_etapas.valor_venda != null
+        ? Number(c.leads_jornada_etapas.valor_venda)
+        : null;
+    if (valor == null || Number.isNaN(valor)) continue;
+
+    const ref = c.convertido_at ?? c.created_at;
+    const { date, sortKey } = dayKeyFromDate(new Date(ref));
+    const prev = map.get(date);
+    map.set(date, { receita: (prev?.receita ?? 0) + valor, sortKey });
+  }
+
+  if (range) {
+    for (const { date, sortKey } of eachDayInRange(range)) {
+      if (!map.has(date)) map.set(date, { receita: 0, sortKey });
+    }
+  }
+
+  return Array.from(map.entries())
+    .map(([date, v]) => ({ date, receita: v.receita, sortKey: v.sortKey }))
+    .sort((a, b) => a.sortKey - b.sortKey);
+}
+
 export function filterLeadsForDashboard(
   cliques: LeadsClique[],
   range: DateRange,
@@ -228,30 +443,120 @@ export function aggregateFunnel(
     byName.set(nome, { count: prev.count + 1, representa_venda: prev.representa_venda || representa_venda });
   }
 
-  return Array.from(byName.entries())
-    .map(([nome, v]) => ({ nome, count: v.count, representa_venda: v.representa_venda }))
-    .sort((a, b) => b.count - a.count);
+  const orderedStages: { nome: string; representa_venda: boolean }[] = [];
+  const seen = new Set<string>();
+  for (const e of [...etapas].sort((a, b) => a.posicao - b.posicao)) {
+    if (seen.has(e.nome)) continue;
+    seen.add(e.nome);
+    orderedStages.push({ nome: e.nome, representa_venda: e.representa_venda });
+  }
+
+  const result = orderedStages.map(({ nome, representa_venda }) => {
+    const entry = byName.get(nome);
+    return {
+      nome,
+      count: entry?.count ?? 0,
+      representa_venda: entry?.representa_venda ?? representa_venda,
+    };
+  });
+
+  const semEtapa = byName.get("Sem etapa");
+  if (semEtapa && semEtapa.count > 0) {
+    result.push({ nome: "Sem etapa", count: semEtapa.count, representa_venda: false });
+  }
+
+  return result;
 }
 
-export function leadsByDay(cliques: LeadsClique[]): { date: string; count: number }[] {
-  const map = new Map<string, number>();
+export function leadsByDay(
+  cliques: LeadsClique[],
+  range?: DateRange
+): { date: string; count: number; sortKey: number }[] {
+  const map = new Map<string, { count: number; sortKey: number }>();
   for (const c of cliques) {
     const ref = c.convertido_at ?? c.created_at;
-    const d = new Date(ref);
-    const key = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
-    map.set(key, (map.get(key) ?? 0) + 1);
+    const { date, sortKey } = dayKeyFromDate(new Date(ref));
+    const prev = map.get(date);
+    map.set(date, { count: (prev?.count ?? 0) + 1, sortKey });
   }
-  return Array.from(map.entries()).map(([date, count]) => ({ date, count }));
+
+  if (range) {
+    for (const { date, sortKey } of eachDayInRange(range)) {
+      if (!map.has(date)) map.set(date, { count: 0, sortKey });
+    }
+  }
+
+  return Array.from(map.entries())
+    .map(([date, v]) => ({ date, count: v.count, sortKey: v.sortKey }))
+    .sort((a, b) => a.sortKey - b.sortKey);
+}
+
+export function leadsByDayByOrigin(cliques: LeadsClique[], range?: DateRange): LeadsByDayOriginRow[] {
+  const map = new Map<string, LeadsByDayOriginRow>();
+
+  for (const c of cliques) {
+    const ref = c.convertido_at ?? c.created_at;
+    const { date, sortKey } = dayKeyFromDate(new Date(ref));
+
+    let row = map.get(date);
+    if (!row) {
+      row = { date, sortKey, meta: 0, google: 0, outras: 0, semRastreio: 0, total: 0 };
+      map.set(date, row);
+    }
+
+    const category = getLeadOriginCategory(c);
+    if (category === "meta") row.meta += 1;
+    else if (category === "google") row.google += 1;
+    else if (category === "outras") row.outras += 1;
+    else row.semRastreio += 1;
+    row.total += 1;
+  }
+
+  if (range) {
+    for (const { date, sortKey } of eachDayInRange(range)) {
+      if (!map.has(date)) {
+        map.set(date, { date, sortKey, meta: 0, google: 0, outras: 0, semRastreio: 0, total: 0 });
+      }
+    }
+  }
+
+  return Array.from(map.values()).sort((a, b) => a.sortKey - b.sortKey);
+}
+
+export function extractPhoneDigits(phone: string | null | undefined): string {
+  if (!phone) return "";
+  return String(phone).split("@")[0].replace(/\D/g, "");
+}
+
+/** Remove DDI 55 quando o número já inclui código do país. */
+export function normalizeBrazilPhoneNational(digits: string): string {
+  if (!digits) return "";
+  if (digits.startsWith("55") && digits.length >= 12) {
+    return digits.slice(2);
+  }
+  return digits;
 }
 
 export function formatPhoneBR(phone: string | null | undefined): string {
   if (!phone) return "Aguardando";
-  const d = phone.replace(/\D/g, "");
-  if (d.length >= 11) {
-    const tail = d.slice(-11);
-    return `(${tail.slice(0, 2)}) ${tail.slice(2, 7)}-${tail.slice(7)}`;
+
+  const national = normalizeBrazilPhoneNational(extractPhoneDigits(phone));
+
+  if (national.length === 11) {
+    return `(${national.slice(0, 2)}) ${national.slice(2, 7)}-${national.slice(7)}`;
   }
-  return phone;
+  if (national.length === 10) {
+    return `(${national.slice(0, 2)}) ${national.slice(2, 6)}-${national.slice(6)}`;
+  }
+  if (national.length === 9) {
+    return `${national.slice(0, 5)}-${national.slice(5)}`;
+  }
+  if (national.length === 8) {
+    return `${national.slice(0, 4)}-${national.slice(4)}`;
+  }
+
+  const raw = String(phone).split("@")[0].trim();
+  return raw || phone;
 }
 
 export function stripInvisibleChars(text: string | null | undefined): string {

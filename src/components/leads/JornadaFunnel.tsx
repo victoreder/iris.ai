@@ -1,16 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  ChevronDown,
-  DollarSign,
-  GripVertical,
-  Pencil,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { ChevronDown, DollarSign, GripVertical, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MetaLogoIcon } from "@/components/leads/MetaOriginBadge";
 import { getMetaEventoLabel, shouldSendMetaEvent } from "@/lib/leadsMetaEvents";
+import { funnelStepWidth } from "@/lib/funnelLayout";
 import type { LeadsJornadaEtapa } from "@/types/database";
 
 interface JornadaFunnelProps {
@@ -21,12 +15,6 @@ interface JornadaFunnelProps {
   onEdit: (etapa: LeadsJornadaEtapa) => void;
   onDelete: (etapa: LeadsJornadaEtapa) => void;
   onReorder: (ordered: LeadsJornadaEtapa[]) => void;
-}
-
-function funnelStepWidth(index: number, total: number): number {
-  if (total <= 1) return 100;
-  const taper = 14;
-  return Math.max(48, 100 - index * taper);
 }
 
 export function JornadaFunnel({

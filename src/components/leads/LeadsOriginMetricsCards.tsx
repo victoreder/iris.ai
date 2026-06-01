@@ -78,20 +78,24 @@ function MetricCard({ label, value, share, icon, iconBg, featured }: MetricCardP
 
 interface Props {
   metrics: LeadsOriginMetrics;
+  layout?: "grid" | "stack";
+  hideTotal?: boolean;
 }
 
-export function LeadsOriginMetricsCards({ metrics }: Props) {
+export function LeadsOriginMetricsCards({ metrics, layout = "grid", hideTotal = false }: Props) {
   const { total, meta, google, outras, semRastreio } = metrics;
 
-  return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-      <MetricCard
-        featured
-        label="Total de leads"
-        value={total}
-        icon={<Users className="h-5 w-5 text-primary" />}
-        iconBg="bg-primary/10"
-      />
+  const cards = (
+    <>
+      {!hideTotal && (
+        <MetricCard
+          featured
+          label="Total de leads"
+          value={total}
+          icon={<Users className="h-5 w-5 text-primary" />}
+          iconBg="bg-primary/10"
+        />
+      )}
       <MetricCard
         label="Meta Ads"
         value={meta}
@@ -120,6 +124,21 @@ export function LeadsOriginMetricsCards({ metrics }: Props) {
         icon={<HelpCircle className="h-5 w-5 text-slate-500" />}
         iconBg="bg-slate-500/10"
       />
+    </>
+  );
+
+  if (layout === "stack") {
+    return <div className="flex flex-col gap-3">{cards}</div>;
+  }
+
+  return (
+    <div
+      className={cn(
+        "grid grid-cols-2 gap-3",
+        hideTotal ? "sm:grid-cols-2 xl:grid-cols-4" : "sm:grid-cols-3 xl:grid-cols-5"
+      )}
+    >
+      {cards}
     </div>
   );
 }

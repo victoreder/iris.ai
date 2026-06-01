@@ -1,9 +1,16 @@
+import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { DollarSign } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Label, Select } from "@/components/ui/input";
+import { Input, Label, Select } from "@/components/ui/input";
 import { describeLeadEvento, LEAD_EVENTO_LABELS } from "@/lib/leadEventos";
+import {
+  formatValorVendaBR,
+  parseValorVendaInput,
+  resolveLeadValorVenda,
+} from "@/lib/leadValorVenda";
 import { getMetaEventoLabel } from "@/lib/leadsMetaEvents";
 import type { LeadsClique, LeadsCliqueEvento, LeadsJornadaEtapa } from "@/types/database";
 
@@ -11,6 +18,8 @@ const eventoBadgeVariant = {
   lead_novo: "success" as const,
   etapa_alterada: "default" as const,
   meta_enviado: "meta" as const,
+  valor_venda_alterado: "warning" as const,
+  origem_adicional: "primary" as const,
 };
 
 interface Props {
@@ -21,8 +30,11 @@ interface Props {
   canWrite: boolean;
   etapaId: string;
   saving: boolean;
+  savingValor: boolean;
   onEtapaIdChange: (id: string) => void;
   onSaveEtapa: () => void;
+  onSaveValorVenda: (valor: number | null) => void;
+  onResetValorVenda: () => void;
 }
 
 export function LeadDetailJornadaPanel({
@@ -33,21 +45,96 @@ export function LeadDetailJornadaPanel({
   canWrite,
   etapaId,
   saving,
+  savingValor,
   onEtapaIdChange,
   onSaveEtapa,
+  onSaveValorVenda,
+  onResetValorVenda,
 }: Props) {
   const instanciaId = lead.instancia_id ?? lead.leads_links?.instancia_id;
   const etapasInstancia = etapas.filter((e) => e.instancia_id === instanciaId);
+  const etapaAtual = lead.leads_jornada_etapas;
+  const etapaCompleta = useMemo(
+    () => etapas.find((e) => e.id === etapaAtual?.id),
+    [etapas, etapaAtual?.id]
+  );
+  const isEtapaVenda = Boolean(etapaAtual?.representa_venda);
+  const valorExibido = resolveLeadValorVenda(lead, etapaCompleta);
+  const valorPadraoEtapa = etapaCompleta?.valor_venda ?? etapaAtual?.valor_venda ?? null;
+  const usaValorPersonalizado = lead.valor_venda != null;
+
+  const [valorInput, setValorInput] = useState("");
+
+  useEffect(() => {
+    const valor = resolveLeadValorVenda(lead, etapaCompleta);
+    setValorInput(valor != null ? String(valor) : "");
+  }, [lead.id, lead.valor_venda, etapaCompleta]);
+
+  const handleSaveValor = () => {
+    const parsed = parseValorVendaInput(valorInput);
+    if (parsed == null && valorInput.trim()) return;
+    onSaveValorVenda(parsed);
+  };
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6">
       <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Etapa atual</p>
-        <p className="mt-2 text-2xl font-semibold tracking-tight">
-          {lead.leads_jornada_etapas?.nome ?? "Sem etapa"}
-        </p>
+        <div className="mt-2 flex items-center gap-2">
+          {isEtapaVenda && <DollarSign className="h-6 w-6 shrink-0 text-success" aria-hidden />}
+          <p className="text-2xl font-semibold tracking-tight">
+            {etapaAtual?.nome ?? "Sem etapa"}
+          </p>
+        </div>
+        {isEtapaVenda && (
+          <div className="mt-4 border-t border-border pt-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Valor da venda
+            </p>
+            <p className="mt-1 text-xl font-semibold text-foreground">{formatValorVendaBR(valorExibido)}</p>
+            {!usaValorPersonalizado && valorPadraoEtapa != null && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Usando valor padrão da etapa
+              </p>
+            )}
+            {usaValorPersonalizado && (
+              <p className="mt-1 text-xs text-muted-foreground">Valor personalizado deste lead</p>
+            )}
+
+            {canWrite && (
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
+                <div className="min-w-0 flex-1 space-y-1">
+                  <Label htmlFor="valor-venda-lead">Editar valor (R$)</Label>
+                  <Input
+                    id="valor-venda-lead"
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="Ex: 1500 ou 1500,50"
+                    value={valorInput}
+                    onChange={(e) => setValorInput(e.target.value)}
+                  />
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  {usaValorPersonalizado && valorPadraoEtapa != null && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={onResetValorVenda}
+                      disabled={savingValor}
+                    >
+                      Padrão da etapa
+                    </Button>
+                  )}
+                  <Button type="button" onClick={handleSaveValor} disabled={savingValor}>
+                    {savingValor ? "Salvando…" : "Salvar valor"}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
         {lead.etapa_atualizada_at && (
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-3 text-xs text-muted-foreground">
             Atualizada em{" "}
             {format(new Date(lead.etapa_atualizada_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
           </p>

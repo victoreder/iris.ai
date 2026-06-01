@@ -1,18 +1,21 @@
+import { Eye } from "lucide-react";
+import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Badge } from "@/components/ui/badge";
+import { LeadDetailOriginsSection } from "@/components/leads/LeadDetailOriginsSection";
 import { MetaOriginBadge } from "@/components/leads/MetaOriginBadge";
+import {
+  buildLeadsListUrlWithUtm,
+  LEADS_UTM_LABELS,
+  type LeadsUtmField,
+} from "@/lib/leadsUtmFilters";
 import { formatPhoneBR, getOriginLabel, isMetaOrigin } from "@/lib/leadsAnalytics";
-import type { LeadsClique } from "@/types/database";
-
-const statusLabels = {
-  convertido: "Convertido",
-  expirado: "Expirado",
-  aguardando: "Aguardando",
-};
+import type { LeadsClique, LeadsCliqueOrigem } from "@/types/database";
 
 interface Props {
   lead: LeadsClique;
+  origens: LeadsCliqueOrigem[];
+  loadingOrigens?: boolean;
 }
 
 function InfoCard({ label, children }: { label: string; children: React.ReactNode }) {
@@ -24,19 +27,42 @@ function InfoCard({ label, children }: { label: string; children: React.ReactNod
   );
 }
 
-export function LeadDetailGeralPanel({ lead }: Props) {
+function UtmRow({ field, value }: { field: LeadsUtmField; value: string | null }) {
+  const label = LEADS_UTM_LABELS[field];
+
+  if (!value?.trim()) {
+    return (
+      <span className="text-muted-foreground">
+        {label}: —
+      </span>
+    );
+  }
+
+  return (
+    <span className="flex min-w-0 items-center gap-2">
+      <span className="min-w-0 truncate">
+        {label}: <span className="font-medium text-foreground">{value}</span>
+      </span>
+      <Link
+        to={buildLeadsListUrlWithUtm(field, value)}
+        className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
+        title={`Ver leads com ${label}: ${value}`}
+        aria-label={`Ver leads com ${label}: ${value}`}
+      >
+        <Eye className="h-3.5 w-3.5" />
+      </Link>
+    </span>
+  );
+}
+
+export function LeadDetailGeralPanel({ lead, origens, loadingOrigens }: Props) {
   const dispositivo = [lead.device_type, lead.browser, lead.os].filter(Boolean).join(" · ") || "—";
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <InfoCard label="Telefone">
           <p className="text-lg font-semibold">{formatPhoneBR(lead.telefone_lead)}</p>
-        </InfoCard>
-        <InfoCard label="Status">
-          <Badge variant={lead.status === "convertido" ? "success" : "warning"}>
-            {statusLabels[lead.status]}
-          </Badge>
         </InfoCard>
         <InfoCard label="Campanha">
           <p className="font-medium">{lead.leads_links?.nome ?? "WhatsApp direto"}</p>
@@ -53,11 +79,6 @@ export function LeadDetailGeralPanel({ lead }: Props) {
         <InfoCard label="Etapa atual">
           <p className="font-medium">{lead.leads_jornada_etapas?.nome ?? "—"}</p>
         </InfoCard>
-        <InfoCard label="Clique no link">
-          <p className="font-medium">
-            {format(new Date(lead.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
-          </p>
-        </InfoCard>
         <InfoCard label="Entrada como lead">
           <p className="font-medium">
             {lead.convertido_at
@@ -71,12 +92,12 @@ export function LeadDetailGeralPanel({ lead }: Props) {
       </div>
 
       <InfoCard label="UTMs / atribuição">
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          <span>Source: {lead.utm_source ?? "—"}</span>
-          <span>Medium: {lead.utm_medium ?? "—"}</span>
-          <span>Campaign: {lead.utm_campaign ?? "—"}</span>
-          <span>Content: {lead.utm_content ?? "—"}</span>
-          <span>Term: {lead.utm_term ?? "—"}</span>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <UtmRow field="utm_source" value={lead.utm_source} />
+          <UtmRow field="utm_medium" value={lead.utm_medium} />
+          <UtmRow field="utm_campaign" value={lead.utm_campaign} />
+          <UtmRow field="utm_content" value={lead.utm_content} />
+          <UtmRow field="utm_term" value={lead.utm_term} />
         </div>
       </InfoCard>
 
@@ -93,6 +114,8 @@ export function LeadDetailGeralPanel({ lead }: Props) {
           <p className="mt-1 truncate text-muted-foreground">Landing: {lead.landing_url}</p>
         )}
       </InfoCard>
+
+      {!loadingOrigens && <LeadDetailOriginsSection lead={lead} origens={origens} />}
     </div>
   );
 }

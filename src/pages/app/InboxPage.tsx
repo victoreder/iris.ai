@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import {
   ChevronDown,
   ChevronUp,
@@ -12,41 +10,52 @@ import {
   Search,
   X,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { useConta } from "@/contexts/ContaContext";
 import { useLeadsInstancias } from "@/hooks/useLeadsInstancias";
+import { LeadsInboxTable } from "@/components/leads/LeadsInboxTable";
 import { LeadsOriginMetricsCards } from "@/components/leads/LeadsOriginMetricsCards";
 import { LeadsWhatsappFilter } from "@/components/leads/LeadsWhatsappFilter";
 import { LeadsKanbanBoard } from "@/components/leads/LeadsKanbanBoard";
 import { InboxLegacyLeadRedirect } from "@/pages/app/LeadDetailPage";
-import { MetaOriginBadge } from "@/components/leads/MetaOriginBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DialogContent, DialogFooter, DialogRoot } from "@/components/ui/dialog";
 import { Input, Label, Select } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { apiPost } from "@/lib/api";
 import { exportLeadsCsv } from "@/lib/exportLeadsCsv";
 import { leadDetailPath, type LeadDetailTab } from "@/lib/leadDetailTabs";
-import { filterConvertedLeads, groupLeadsByKanbanColumn } from "@/lib/leadsKanban";
+import { LEAD_DETAIL_SELECT } from "@/lib/leadsConstants";
+import { groupLeadsByKanbanColumn } from "@/lib/leadsKanban";
+import { getCanonicalConvertedLeads } from "@/lib/leadPhone";
 import {
-  getOriginLabel,
-  isMetaOrigin,
-  formatPhoneBR,
+  countActiveLeadsUtmFilters,
+  collectUniqueUtmValues,
+  getActiveLeadsUtmFilterLabels,
+  LEADS_UTM_FIELDS,
+  LEADS_UTM_LABELS,
+  matchesLeadsUtmFilters,
+  parseLeadsUtmFiltersFromSearch,
+  setLeadsUtmFilterInSearchParams,
+  stripLeadsUtmParams,
+  type LeadsUtmField,
+} from "@/lib/leadsUtmFilters";
+import { LeadsUtmSearchSelect } from "@/components/leads/LeadsUtmSearchSelect";
+import {
+  DEFAULT_LEADS_TABLE_COLUMNS,
+  loadSavedLeadsTableColumns,
+  type LeadsTableColumnKey,
+} from "@/lib/leadsTableColumns";
+import {
+  extractPhoneDigits,
   getLeadInstanciaId,
   getDateRangeFromPreset,
   aggregateLeadsByOrigin,
+  isLeadInPeriod,
   type DatePreset,
 } from "@/lib/leadsAnalytics";
 import { cn } from "@/lib/utils";
@@ -74,17 +83,12 @@ function matchesStructuralFilters(
 function matchesPhoneFilter(c: LeadsClique, telefoneFilter: string) {
   if (!telefoneFilter.trim()) return true;
   const digits = telefoneFilter.replace(/\D/g, "");
-  return (c.telefone_lead ?? "").replace(/\D/g, "").includes(digits);
-}
-
-function isLeadInPeriod(c: LeadsClique, from: Date, to: Date) {
-  const ref = c.convertido_at ?? c.created_at;
-  const d = new Date(ref);
-  return d >= from && d <= to;
+  return extractPhoneDigits(c.telefone_lead).includes(digits);
 }
 
 export function InboxPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { contaAtiva, canWrite } = useConta();
   const { instancias } = useLeadsInstancias(true);
   const [cliques, setCliques] = useState<LeadsClique[]>([]);
@@ -100,12 +104,31 @@ export function InboxPage() {
   const [kanbanInstanciaId, setKanbanInstanciaId] = useState<string | null>(null);
   const [whatsappPickerOpen, setWhatsappPickerOpen] = useState(false);
   const [pickerSelection, setPickerSelection] = useState("");
+  const [tableColumns, setTableColumns] = useState<LeadsTableColumnKey[]>(DEFAULT_LEADS_TABLE_COLUMNS);
+  const [columnsPickerOpen, setColumnsPickerOpen] = useState(false);
   const filtersToggleRef = useRef<HTMLButtonElement>(null);
   const filtersPanelRef = useRef<HTMLDivElement>(null);
+
+  const utmFilters = useMemo(
+    () => parseLeadsUtmFiltersFromSearch(searchParams),
+    [searchParams]
+  );
+
+  const utmOptions = useMemo(() => collectUniqueUtmValues(cliques), [cliques]);
+
+  const setUtmFilter = (field: LeadsUtmField, value: string) => {
+    setSearchParams(setLeadsUtmFilterInSearchParams(searchParams, field, value), { replace: true });
+  };
 
   const openLeadDetail = (lead: LeadsClique, tab: LeadDetailTab = "geral") => {
     navigate(leadDetailPath(lead.id, tab));
   };
+
+  useEffect(() => {
+    if (!contaAtiva) return;
+    const saved = loadSavedLeadsTableColumns(contaAtiva.id);
+    setTableColumns(saved ?? [...DEFAULT_LEADS_TABLE_COLUMNS]);
+  }, [contaAtiva?.id]);
 
   useEffect(() => {
     if (!filtersOpen) return;
@@ -148,13 +171,18 @@ export function InboxPage() {
   const dateRange = useMemo(() => getDateRangeFromPreset(period), [period]);
 
   const structuralFiltered = useMemo(
-    () => cliques.filter((c) => matchesStructuralFilters(c, instanciaFilter, linkFilter)),
-    [cliques, instanciaFilter, linkFilter]
+    () =>
+      cliques.filter(
+        (c) =>
+          matchesStructuralFilters(c, instanciaFilter, linkFilter) &&
+          matchesLeadsUtmFilters(c, utmFilters)
+      ),
+    [cliques, instanciaFilter, linkFilter, utmFilters]
   );
 
   const metricas = useMemo(() => {
     const { from, to } = dateRange;
-    const leadsInPeriod = filterConvertedLeads(structuralFiltered).filter((c) =>
+    const leadsInPeriod = getCanonicalConvertedLeads(structuralFiltered).filter((c) =>
       isLeadInPeriod(c, from, to)
     );
     return aggregateLeadsByOrigin(leadsInPeriod);
@@ -162,7 +190,7 @@ export function InboxPage() {
 
   const leads = useMemo(() => {
     const { from, to } = dateRange;
-    return filterConvertedLeads(structuralFiltered).filter(
+    return getCanonicalConvertedLeads(structuralFiltered).filter(
       (c) =>
         isLeadInPeriod(c, from, to) &&
         matchesPhoneFilter(c, telefoneFilter)
@@ -179,7 +207,7 @@ export function InboxPage() {
   const kanbanColumns = useMemo(() => {
     if (!kanbanInstanciaId) return [];
     const { from, to } = dateRange;
-    const kanbanLeads = filterConvertedLeads(
+    const kanbanLeads = getCanonicalConvertedLeads(
       cliques.filter(
         (c) =>
           getLeadInstanciaId(c) === kanbanInstanciaId &&
@@ -194,8 +222,9 @@ export function InboxPage() {
     let n = 0;
     if (instanciaFilter !== "all") n += 1;
     if (linkFilter !== "all") n += 1;
+    n += countActiveLeadsUtmFilters(utmFilters);
     return n;
-  }, [instanciaFilter, linkFilter]);
+  }, [instanciaFilter, linkFilter, utmFilters]);
 
   const activeFilterLabels = useMemo(() => {
     const labels: string[] = [];
@@ -207,12 +236,14 @@ export function InboxPage() {
       const link = links.find((l) => l.id === linkFilter);
       labels.push(link?.nome ?? "Campanha");
     }
+    labels.push(...getActiveLeadsUtmFilterLabels(utmFilters));
     return labels;
-  }, [instanciaFilter, linkFilter, instancias, links]);
+  }, [instanciaFilter, linkFilter, utmFilters, instancias, links]);
 
   const clearFilters = () => {
     setInstanciaFilter("all");
     setLinkFilter("all");
+    setSearchParams(stripLeadsUtmParams(searchParams), { replace: true });
   };
 
   const openColunasView = () => {
@@ -382,6 +413,30 @@ export function InboxPage() {
                 </Select>
               </div>
             </div>
+
+            <div className="border-t border-border pt-4">
+              <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                UTMs
+              </p>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+                {LEADS_UTM_FIELDS.map((field) => {
+                  const options = [...utmOptions[field]];
+                  const selected = utmFilters[field];
+                  if (selected && !options.includes(selected)) {
+                    options.unshift(selected);
+                  }
+                  return (
+                    <LeadsUtmSearchSelect
+                      key={field}
+                      label={`UTM ${LEADS_UTM_LABELS[field]}`}
+                      value={selected}
+                      options={options}
+                      onChange={(value) => setUtmFilter(field, value)}
+                    />
+                  );
+                })}
+              </div>
+            </div>
             {activeFiltersCount > 0 && (
               <div className="flex justify-end border-t border-border pt-4">
                 <Button variant="ghost" size="sm" onClick={clearFilters}>
@@ -394,75 +449,15 @@ export function InboxPage() {
       )}
 
       {view === "lista" ? (
-        <Card>
-          <div className="flex items-center justify-between border-b border-border px-4 py-3">
-            <p className="text-sm text-muted-foreground">
-              {leads.length === 0
-                ? "Nenhum lead com os filtros atuais"
-                : `${leads.length} lead${leads.length === 1 ? "" : "s"}`}
-            </p>
-          </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Contato</TableHead>
-                <TableHead>Etapa</TableHead>
-                <TableHead>Campanha</TableHead>
-                <TableHead>Origem</TableHead>
-                <TableHead>Entrada</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {leads.map((c) => (
-                <TableRow
-                  key={c.id}
-                  className="cursor-pointer transition-colors hover:bg-muted/50"
-                  onClick={() => openLeadDetail(c)}
-                >
-                  <TableCell className="font-medium">{formatPhoneBR(c.telefone_lead)}</TableCell>
-                  <TableCell onClick={(e) => e.stopPropagation()}>
-                    {c.leads_jornada_etapas?.nome ? (
-                      <button
-                        type="button"
-                        className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                        onClick={() => openLeadDetail(c, "jornada")}
-                        title="Ver jornada"
-                      >
-                        <Badge variant="outline" className="font-normal hover:bg-muted">
-                          {c.leads_jornada_etapas.nome}
-                        </Badge>
-                      </button>
-                    ) : (
-                      "—"
-                    )}
-                  </TableCell>
-                  <TableCell>{c.leads_links?.nome ?? "WhatsApp direto"}</TableCell>
-                  <TableCell>
-                    <span className="flex items-center gap-1">
-                      {isMetaOrigin(c) && <MetaOriginBadge />}
-                      {getOriginLabel(c)}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {format(new Date(c.convertido_at ?? c.created_at), "dd/MM/yyyy HH:mm", {
-                      locale: ptBR,
-                    })}
-                  </TableCell>
-                </TableRow>
-              ))}
-              {leads.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={5} className="py-12 text-center">
-                    <p className="font-medium text-foreground">Nenhum lead encontrado</p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Ajuste o período, filtros ou aguarde novas conversões.
-                    </p>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </Card>
+        <LeadsInboxTable
+          leads={leads}
+          columns={tableColumns}
+          contaId={contaAtiva!.id}
+          columnsPickerOpen={columnsPickerOpen}
+          onColumnsPickerOpenChange={setColumnsPickerOpen}
+          onColumnsChange={setTableColumns}
+          onLeadClick={openLeadDetail}
+        />
       ) : (
         <div className="space-y-3">
           {kanbanInstancia && (

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { LeadConversaChat } from "@/components/leads/LeadConversaChat";
 import { LeadDetailGeralPanel } from "@/components/leads/LeadDetailGeralPanel";
 import { LeadDetailJornadaPanel } from "@/components/leads/LeadDetailJornadaPanel";
+import { resolveLeadOrigens } from "@/lib/leadOrigens";
 import { MetaOriginBadge } from "@/components/leads/MetaOriginBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ import type {
   LeadsClique,
   LeadsCliqueEvento,
   LeadsCliqueMensagem,
+  LeadsCliqueOrigem,
   LeadsJornadaEtapa,
 } from "@/types/database";
 
@@ -47,11 +49,14 @@ export function LeadDetailPage() {
   const [etapas, setEtapas] = useState<LeadsJornadaEtapa[]>([]);
   const [historico, setHistorico] = useState<LeadsCliqueEvento[]>([]);
   const [mensagens, setMensagens] = useState<LeadsCliqueMensagem[]>([]);
+  const [origens, setOrigens] = useState<LeadsCliqueOrigem[]>([]);
+  const [loadingOrigens, setLoadingOrigens] = useState(true);
   const [loading, setLoading] = useState(true);
   const [loadingHistorico, setLoadingHistorico] = useState(true);
   const [loadingMensagens, setLoadingMensagens] = useState(true);
   const [etapaId, setEtapaId] = useState("");
   const [saving, setSaving] = useState(false);
+  const [savingValor, setSavingValor] = useState(false);
 
   const phoneTitle = lead ? formatPhoneBR(lead.telefone_lead) : "Lead";
   useDocumentTitle(phoneTitle);
@@ -111,6 +116,14 @@ export function LeadDetailPage() {
     setLoadingMensagens(false);
   }, [leadId]);
 
+  const loadOrigens = useCallback(async () => {
+    if (!lead) return;
+    setLoadingOrigens(true);
+    const rows = await resolveLeadOrigens(lead);
+    setOrigens(rows);
+    setLoadingOrigens(false);
+  }, [lead]);
+
   useEffect(() => {
     void loadLead();
     void loadEtapas();
@@ -120,7 +133,8 @@ export function LeadDetailPage() {
     if (!lead) return;
     void loadHistorico();
     void loadMensagens();
-  }, [lead?.id, loadHistorico, loadMensagens]);
+    void loadOrigens();
+  }, [lead?.id, loadHistorico, loadMensagens, loadOrigens]);
 
   const setTab = (next: LeadDetailTab) => {
     setSearchParams(
@@ -155,11 +169,34 @@ export function LeadDetailPage() {
     }
   };
 
+  const handleSaveValorVenda = async (valor: number | null) => {
+    if (!lead || !contaAtiva || !canWrite) return;
+    setSavingValor(true);
+    try {
+      await apiPost(
+        "/api/leads/atualizar-valor-venda-lead",
+        { cliqueId: lead.id, valorVenda: valor },
+        contaAtiva.id
+      );
+      toast.success(valor != null ? "Valor da venda salvo." : "Valor restaurado ao padrão da etapa.");
+      await loadLead();
+      await loadHistorico();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao salvar valor.");
+    } finally {
+      setSavingValor(false);
+    }
+  };
+
+  const handleResetValorVenda = () => {
+    void handleSaveValorVenda(null);
+  };
+
   if (!leadId) return <Navigate to="/app/leads" replace />;
 
   if (loading) {
     return (
-      <div className="-mx-4 -my-6 space-y-4 sm:-mx-6 sm:-my-8">
+      <div className="space-y-4">
         <Skeleton className="h-16 w-full rounded-none" />
         <Skeleton className="mx-4 h-64 rounded-xl sm:mx-6" />
       </div>
@@ -178,8 +215,8 @@ export function LeadDetailPage() {
   }
 
   return (
-    <div className="-mx-4 -my-6 flex min-h-[calc(100dvh-3.5rem)] flex-col sm:-mx-6 sm:-my-8">
-      <header className="shrink-0 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
+    <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col">
+      <header className="w-full shrink-0 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
         <div className="flex items-start gap-3 px-4 py-3 sm:px-6">
           <Button
             variant="ghost"
@@ -230,10 +267,10 @@ export function LeadDetailPage() {
         </nav>
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
+      <div className="lead-panel-bg flex min-h-0 flex-1 flex-col overflow-hidden">
         {tab === "geral" && (
           <div className="flex-1 overflow-y-auto">
-            <LeadDetailGeralPanel lead={lead} />
+            <LeadDetailGeralPanel lead={lead} origens={origens} loadingOrigens={loadingOrigens} />
           </div>
         )}
 
@@ -247,8 +284,11 @@ export function LeadDetailPage() {
               canWrite={canWrite}
               etapaId={etapaId}
               saving={saving}
+              savingValor={savingValor}
               onEtapaIdChange={setEtapaId}
               onSaveEtapa={handleSaveEtapa}
+              onSaveValorVenda={handleSaveValorVenda}
+              onResetValorVenda={handleResetValorVenda}
             />
           </div>
         )}

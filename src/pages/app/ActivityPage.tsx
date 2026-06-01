@@ -32,6 +32,8 @@ const eventoBadgeVariant: Record<
   lead_novo: "success",
   etapa_alterada: "default",
   meta_enviado: "meta",
+  valor_venda_alterado: "warning",
+  origem_adicional: "primary",
 };
 
 export function ActivityPage() {
@@ -88,6 +90,8 @@ export function ActivityPage() {
               <option value="lead_novo">Novo lead</option>
               <option value="etapa_alterada">Etapa alterada</option>
               <option value="meta_enviado">Evento Meta</option>
+              <option value="valor_venda_alterado">Valor da venda</option>
+              <option value="origem_adicional">Nova origem</option>
             </Select>
           </div>
         </div>

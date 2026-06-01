@@ -194,7 +194,13 @@ export async function sendMetaForEtapa({ supabase, clique, link, etapa, force = 
   }
   const eventId = `lead_${clique.id}_etapa_${etapa.id}`;
   const value =
-    etapa.representa_venda && etapa.valor_venda != null ? Number(etapa.valor_venda) : null;
+    etapa.representa_venda
+      ? (clique.valor_venda != null
+          ? Number(clique.valor_venda)
+          : etapa.valor_venda != null
+            ? Number(etapa.valor_venda)
+            : null)
+      : null;
 
   const metaResult = await sendMetaConversionEvent({
     clique,

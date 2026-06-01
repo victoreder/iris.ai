@@ -119,12 +119,42 @@ export interface LeadsClique {
   meta_enviado_at: string | null;
   etapa_id: string | null;
   etapa_atualizada_at: string | null;
+  valor_venda: number | null;
+  clique_principal_id: string | null;
   created_at: string;
   leads_links?: Pick<LeadsLink, "id" | "nome" | "slug" | "instancia_id"> | null;
-  leads_jornada_etapas?: Pick<LeadsJornadaEtapa, "id" | "nome" | "representa_venda"> | null;
+  leads_jornada_etapas?: Pick<LeadsJornadaEtapa, "id" | "nome" | "representa_venda" | "valor_venda"> | null;
 }
 
-export type LeadsCliqueEventoTipo = "lead_novo" | "etapa_alterada" | "meta_enviado";
+export type LeadsCliqueEventoTipo =
+  | "lead_novo"
+  | "etapa_alterada"
+  | "meta_enviado"
+  | "valor_venda_alterado"
+  | "origem_adicional";
+
+export interface LeadsCliqueOrigem {
+  id: string;
+  conta_id: string;
+  clique_id: string;
+  ordem: number;
+  origem_clique_id: string | null;
+  link_id: string | null;
+  campanha_nome: string | null;
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  utm_content: string | null;
+  utm_term: string | null;
+  fbclid: string | null;
+  gclid: string | null;
+  ttclid: string | null;
+  referrer: string | null;
+  landing_url: string | null;
+  fbp: string | null;
+  fbc: string | null;
+  registrado_em: string;
+}
 
 export interface LeadsCliqueEvento {
   id: string;

@@ -101,3 +101,19 @@ export async function recordMetaEnviado(
     detalhes,
   });
 }
+
+export async function recordValorVendaAlterado(
+  supabase,
+  { contaId, cliqueId, valorAnterior, valorNovo, detalhes }
+) {
+  await logLeadEvento(supabase, {
+    contaId,
+    cliqueId,
+    tipo: "valor_venda_alterado",
+    detalhes: {
+      valor_anterior: valorAnterior ?? null,
+      valor_novo: valorNovo ?? null,
+      ...(detalhes && typeof detalhes === "object" ? detalhes : {}),
+    },
+  });
+}

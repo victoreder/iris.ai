@@ -20,6 +20,7 @@ import leadsSalvarConfigMetaHandler from "../api/leads/salvar-config-meta.js";
 import leadsTestarMetaHandler from "../api/leads/testar-meta.js";
 import leadsWebhookUrlHandler from "../api/leads/webhook-url.js";
 import leadsAtualizarEtapaLeadHandler from "../api/leads/atualizar-etapa-lead.js";
+import leadsAtualizarValorVendaLeadHandler from "../api/leads/atualizar-valor-venda-lead.js";
 import adminCriarClienteHandler from "../api/admin/criar-cliente.js";
 import adminAtualizarContaHandler from "../api/admin/atualizar-conta.js";
 import adminRegistrarPagamentoHandler from "../api/admin/registrar-pagamento.js";
@@ -57,6 +58,7 @@ post("/api/leads/salvar-config-meta", leadsSalvarConfigMetaHandler);
 post("/api/leads/testar-meta", leadsTestarMetaHandler);
 get("/api/leads/webhook-url", leadsWebhookUrlHandler);
 post("/api/leads/atualizar-etapa-lead", leadsAtualizarEtapaLeadHandler);
+post("/api/leads/atualizar-valor-venda-lead", leadsAtualizarValorVendaLeadHandler);
 
 post("/api/admin/criar-cliente", adminCriarClienteHandler);
 post("/api/admin/atualizar-conta", adminAtualizarContaHandler);

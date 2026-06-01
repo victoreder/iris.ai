@@ -26,6 +26,7 @@ export function AppLayout() {
 
   const pageTitle = getPageTitle(location.pathname);
   useDocumentTitle(pageTitle);
+  const isLeadDetail = /^\/app\/leads\/[^/]+$/.test(location.pathname);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -55,7 +56,12 @@ export function AppLayout() {
       <div className="flex min-w-0 flex-1 flex-col">
         <AppHeader title={pageTitle} onOpenMobileMenu={() => setMobileOpen(true)} />
         <main className="flex-1 overflow-auto">
-          <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+          <div
+            className={cn(
+              "mx-auto w-full",
+              isLeadDetail ? "" : "max-w-7xl px-4 py-6 sm:px-6 sm:py-8"
+            )}
+          >
             <Outlet />
           </div>
         </main>

@@ -25,6 +25,7 @@ import {
   sanitizeForLog,
 } from "../_lib/leadsLogger.js";
 import { recordEtapaAlterada, recordLeadNovo } from "../_lib/leadEventos.js";
+import { ensureFirstOrigem, resolveEffectiveLead } from "../_lib/leadOrigens.js";
 import { recordLeadMensagem, markMensagemDisparouEtapa, extractMessageIdFromWebhookItem } from "../_lib/leadMensagens.js";
 
 export const config = { api: { bodyParser: { sizeLimit: "512kb" } } };
@@ -119,6 +120,12 @@ async function applyEtapaToClique(supabase, {
       etapa,
       detalhes: { matchMethod, telefone: telefone || null },
     });
+    const { data: cliqueFresh } = await supabase
+      .from("leads_cliques")
+      .select("*, leads_links(id, slug, nome, mensagem_inicial, instancia_id)")
+      .eq("id", trackingId)
+      .maybeSingle();
+    await ensureFirstOrigem(supabase, { clique: cliqueFresh ?? cliqueAtualizado });
   }
 
   const etapaMudou = clique.etapa_id !== etapa.id;
@@ -289,6 +296,15 @@ export default async function handler(req, res) {
             trackingId = created.trackingId;
             matchMethod = created.matchMethod;
           }
+        }
+      }
+
+      if (clique && trackingId && !isOutgoing && telefone) {
+        const resolved = await resolveEffectiveLead(supabase, { clique, trackingId, telefone });
+        clique = resolved.clique;
+        trackingId = resolved.trackingId;
+        if (resolved.merged) {
+          matchMethod = "telefone_lead_existente";
         }
       }
 

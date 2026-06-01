@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { META_PIXEL_CONFIG_HASH } from "@/components/layout/MetaPixelHeaderStatus";
 import { supabase } from "@/lib/supabase";
 import { useConta } from "@/contexts/ContaContext";
 import { apiPost } from "@/lib/api";
@@ -41,6 +42,12 @@ export function IntegrationsPage() {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    if (loading || window.location.hash !== `#${META_PIXEL_CONFIG_HASH}`) return;
+    const el = document.getElementById(META_PIXEL_CONFIG_HASH);
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [loading]);
+
   const salvar = async () => {
     if (!contaAtiva || !isAdmin) return;
     setSaving(true);
@@ -81,7 +88,7 @@ export function IntegrationsPage() {
         <p className="text-muted-foreground">Meta Conversions API</p>
       </div>
 
-      <Card className="max-w-xl">
+      <Card id={META_PIXEL_CONFIG_HASH} className="max-w-xl scroll-mt-6">
         <CardHeader>
           <CardTitle className="text-base">Meta Pixel + CAPI</CardTitle>
           <CardDescription>
