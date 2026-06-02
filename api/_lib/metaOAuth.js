@@ -1,4 +1,39 @@
 const META_GRAPH_VERSION = "v25.0";
+const META_OAUTH_CALLBACK_PATH = "/auth/meta/callback";
+
+function normalizeMetaOAuthRedirectUri(uri) {
+  return String(uri ?? "").trim().replace(/\/+$/, "");
+}
+
+/** URIs OAuth permitidas (mesma lista cadastrada no Meta Developer). */
+export function getConfiguredMetaOAuthRedirectUris() {
+  const uris = new Set();
+  for (const value of [
+    process.env.META_OAUTH_REDIRECT_URI,
+    process.env.VITE_META_OAUTH_REDIRECT_URI,
+  ]) {
+    const normalized = normalizeMetaOAuthRedirectUri(value);
+    if (normalized) uris.add(normalized);
+  }
+  for (const base of [process.env.VITE_APP_PUBLIC_URL, process.env.APP_PUBLIC_URL]) {
+    const normalized = normalizeMetaOAuthRedirectUri(base);
+    if (normalized) uris.add(`${normalized}${META_OAUTH_CALLBACK_PATH}`);
+  }
+  uris.add(`http://localhost:5175${META_OAUTH_CALLBACK_PATH}`);
+  uris.add(`https://app.viziom.ia.br${META_OAUTH_CALLBACK_PATH}`);
+  return [...uris];
+}
+
+export function getPrimaryMetaOAuthRedirectUri() {
+  const explicit = normalizeMetaOAuthRedirectUri(process.env.META_OAUTH_REDIRECT_URI);
+  if (explicit) return explicit;
+  const fromVite = normalizeMetaOAuthRedirectUri(process.env.VITE_META_OAUTH_REDIRECT_URI);
+  if (fromVite) return fromVite;
+  const base = normalizeMetaOAuthRedirectUri(
+    process.env.VITE_APP_PUBLIC_URL || process.env.APP_PUBLIC_URL || "http://localhost:5175"
+  );
+  return `${base}${META_OAUTH_CALLBACK_PATH}`;
+}
 
 function getMetaAppCredentials() {
   const appId =
@@ -25,21 +60,16 @@ async function graphGet(path, accessToken, params = {}) {
 
 /** Valida redirect_uri usado no fluxo OAuth code. */
 export function assertMetaOAuthRedirectUri(redirectUri) {
-  const normalized = String(redirectUri ?? "").trim().replace(/\/+$/, "");
-  if (!normalized.endsWith("/auth/meta/callback")) {
+  const normalized = normalizeMetaOAuthRedirectUri(redirectUri);
+  if (!normalized.endsWith(META_OAUTH_CALLBACK_PATH)) {
     throw new Error("redirect_uri inválido.");
   }
-  const allowedBases = [
-    process.env.META_OAUTH_REDIRECT_URI,
-    process.env.VITE_APP_PUBLIC_URL,
-    process.env.APP_PUBLIC_URL,
-    "http://localhost:5175",
-  ]
-    .filter(Boolean)
-    .map((s) => String(s).trim().replace(/\/+$/, ""));
-
-  const ok = allowedBases.some((base) => normalized === `${base}/auth/meta/callback`);
-  if (!ok) throw new Error("redirect_uri não permitido.");
+  const allowed = getConfiguredMetaOAuthRedirectUris();
+  if (!allowed.includes(normalized)) {
+    throw new Error(
+      `redirect_uri não permitido (${normalized}). Configure META_OAUTH_REDIRECT_URI igual à URI cadastrada no Meta Developer.`
+    );
+  }
   return normalized;
 }
 

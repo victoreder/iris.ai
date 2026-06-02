@@ -1,10 +1,16 @@
+import { useState } from "react";
 import { toast } from "sonner";
 import { MetaLogoIcon } from "@/components/leads/MetaOriginBadge";
 import { MetaConnectionIndicator } from "@/components/layout/MetaConnectionIndicator";
 import { useConta } from "@/contexts/ContaContext";
 import { useAppRoutes } from "@/hooks/useAppRoutes";
 import { useMetaConnectionStatus } from "@/hooks/useMetaConnectionStatus";
-import { getMetaAppId, startMetaOAuthRedirect } from "@/lib/metaOAuth";
+import {
+  getMetaAppId,
+  getMetaOAuthRedirectUri,
+  startMetaOAuthPopup,
+  startMetaOAuthRedirect,
+} from "@/lib/metaOAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/badge";
@@ -12,22 +18,42 @@ import { Skeleton } from "@/components/ui/badge";
 export function MetaConnectSettingsPage() {
   const { contaAtiva, isAdmin } = useConta();
   const routes = useAppRoutes();
-  const { loading, connected } = useMetaConnectionStatus();
+  const { loading, connected, reload } = useMetaConnectionStatus();
+  const [connecting, setConnecting] = useState(false);
   const metaAppId = getMetaAppId();
+  const oauthRedirectUri = getMetaOAuthRedirectUri();
 
-  const conectarMeta = () => {
+  const conectarMeta = async () => {
     if (!contaAtiva || !isAdmin) return;
     if (!metaAppId) {
       toast.error("Configure VITE_META_APP_ID no ambiente.");
       return;
     }
+
+    const returnTo = `${routes.configuracoes}/conectar-meta`;
+    setConnecting(true);
+
     try {
-      startMetaOAuthRedirect(
-        contaAtiva.id,
-        `${routes.configuracoes}/conectar-meta`
-      );
+      const status = await startMetaOAuthPopup(contaAtiva.id, returnTo);
+      if (status === "success") {
+        toast.success("Conta Meta conectada com sucesso.");
+        void reload();
+      } else if (status === "cancelled") {
+        toast.message("Login com Meta cancelado.");
+      }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erro ao iniciar login Meta.");
+      const message = err instanceof Error ? err.message : "Erro ao iniciar login Meta.";
+      if (message.includes("Popup bloqueado")) {
+        toast.error(message);
+        const usarAba = window.confirm(
+          "Popup bloqueado pelo navegador. Abrir login da Meta nesta aba? (você voltará ao Viziom após autorizar)"
+        );
+        if (usarAba) startMetaOAuthRedirect(contaAtiva.id, returnTo);
+      } else {
+        toast.error(message);
+      }
+    } finally {
+      setConnecting(false);
     }
   };
 
@@ -42,7 +68,7 @@ export function MetaConnectSettingsPage() {
             <MetaConnectionIndicator connected={connected} />
           </div>
           <CardDescription>
-            Abre o login do Facebook para autorizar o Viziom. O token fica salvo com segurança no
+            Abre uma janela do Facebook para autorizar o Viziom. O token fica salvo com segurança no
             servidor. Configure o Pixel na aba Meta Pixel.
           </CardDescription>
         </CardHeader>
@@ -57,18 +83,22 @@ export function MetaConnectSettingsPage() {
                   <p className="text-xs text-muted-foreground">
                     {connected
                       ? "Você pode reconectar para atualizar as permissões."
-                      : "Clique abaixo para abrir o login do Facebook."}
+                      : "Abre popup do Facebook — o Viziom permanece aberto aqui."}
                   </p>
                 </div>
                 <Button
                   type="button"
                   variant={connected ? "outline" : "default"}
-                  onClick={conectarMeta}
-                  disabled={!metaAppId}
+                  onClick={() => void conectarMeta()}
+                  disabled={connecting || !metaAppId}
                   className="gap-2"
                 >
                   <MetaLogoIcon className="h-4 w-auto" />
-                  {connected ? "Reconectar Meta" : "Conectar Meta"}
+                  {connecting
+                    ? "Aguardando Meta…"
+                    : connected
+                      ? "Reconectar Meta"
+                      : "Conectar Meta"}
                 </Button>
               </div>
               {!metaAppId && (
@@ -76,6 +106,12 @@ export function MetaConnectSettingsPage() {
                   Defina VITE_META_APP_ID (e META_APP_SECRET no backend) para habilitar o login.
                 </p>
               )}
+              <p className="text-xs text-muted-foreground">
+                URI OAuth (cadastre exatamente no Meta Developer):{" "}
+                <code className="break-all rounded bg-background px-1 py-0.5 text-[11px]">
+                  {oauthRedirectUri}
+                </code>
+              </p>
               {connected && (
                 <p className="text-xs text-emerald-700 dark:text-emerald-400">
                   Token salvo com segurança no servidor.

@@ -5,6 +5,7 @@ import { apiPost } from "@/lib/api";
 import {
   clearMetaOAuthSession,
   getMetaOAuthRedirectUri,
+  postMetaOAuthResult,
   readMetaOAuthSession,
 } from "@/lib/metaOAuth";
 
@@ -12,6 +13,7 @@ export function MetaOAuthCallbackPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const handled = useRef(false);
+  const isPopup = typeof window !== "undefined" && Boolean(window.opener);
 
   useEffect(() => {
     if (handled.current) return;
@@ -21,10 +23,23 @@ export function MetaOAuthCallbackPage() {
     const { nonce, contaId, returnTo } = readMetaOAuthSession();
     const fallback = returnTo || "/app";
 
-    if (oauthError) {
+    const closePopup = (status: "success" | "error" | "cancelled", error?: string) => {
       clearMetaOAuthSession();
-      toast.error(oauthError === "access_denied" ? "Login com Meta cancelado." : oauthError);
+      if (isPopup) {
+        postMetaOAuthResult({ status, error });
+        window.close();
+        return;
+      }
+      if (status === "success") toast.success("Conta Meta conectada com sucesso.");
+      else if (status === "cancelled") toast.error("Login com Meta cancelado.");
+      else toast.error(error ?? "Erro ao conectar Meta.");
       navigate(fallback, { replace: true });
+    };
+
+    if (oauthError) {
+      const msg =
+        oauthError === "access_denied" ? "Login com Meta cancelado." : oauthError;
+      closePopup("cancelled", msg);
       return;
     }
 
@@ -32,9 +47,7 @@ export function MetaOAuthCallbackPage() {
     const state = searchParams.get("state");
 
     if (!code || !state || state !== nonce || !contaId) {
-      clearMetaOAuthSession();
-      toast.error("Sessão OAuth inválida ou expirada. Tente conectar novamente.");
-      navigate(fallback, { replace: true });
+      closePopup("error", "Sessão OAuth inválida ou expirada. Tente conectar novamente.");
       return;
     }
 
@@ -45,15 +58,12 @@ export function MetaOAuthCallbackPage() {
           { code, redirectUri: getMetaOAuthRedirectUri() },
           contaId
         );
-        toast.success("Conta Meta conectada com sucesso.");
+        closePopup("success");
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Erro ao conectar Meta.");
-      } finally {
-        clearMetaOAuthSession();
-        navigate(fallback, { replace: true });
+        closePopup("error", err instanceof Error ? err.message : "Erro ao conectar Meta.");
       }
     })();
-  }, [navigate, searchParams]);
+  }, [isPopup, navigate, searchParams]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
