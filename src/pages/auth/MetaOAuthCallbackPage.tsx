@@ -1,73 +1,101 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { apiPost } from "@/lib/api";
 import {
   clearMetaOAuthSession,
   getMetaOAuthRedirectUri,
-  postMetaOAuthResult,
   readMetaOAuthSession,
 } from "@/lib/metaOAuth";
+import { supabase } from "@/lib/supabase";
+
+async function waitForAuthSession(timeoutMs = 8000): Promise<boolean> {
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    const { data } = await supabase.auth.getSession();
+    if (data.session?.access_token) return true;
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  return false;
+}
 
 export function MetaOAuthCallbackPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const handled = useRef(false);
-  const isPopup = typeof window !== "undefined" && Boolean(window.opener);
+  const [statusMessage, setStatusMessage] = useState("Conectando conta Meta…");
 
   useEffect(() => {
     if (handled.current) return;
     handled.current = true;
 
-    const oauthError = searchParams.get("error_description") || searchParams.get("error");
-    const state = searchParams.get("state");
-    const { nonce, contaId, returnTo } = readMetaOAuthSession(state);
-    const fallback = returnTo || "/app";
-
-    const closePopup = (status: "success" | "error" | "cancelled", error?: string) => {
+    const finish = (
+      outcome: "success" | "error" | "cancelled",
+      message: string,
+      returnTo: string
+    ) => {
       clearMetaOAuthSession();
-      if (isPopup) {
-        postMetaOAuthResult({ status, error });
-        window.close();
-        return;
-      }
-      if (status === "success") toast.success("Conta Meta conectada com sucesso.");
-      else if (status === "cancelled") toast.error("Login com Meta cancelado.");
-      else toast.error(error ?? "Erro ao conectar Meta.");
-      navigate(fallback, { replace: true });
+      if (outcome === "success") toast.success(message);
+      else if (outcome === "cancelled") toast.message(message);
+      else toast.error(message);
+      navigate(returnTo, { replace: true });
     };
 
-    if (oauthError) {
-      const msg =
-        oauthError === "access_denied" ? "Login com Meta cancelado." : oauthError;
-      closePopup("cancelled", msg);
-      return;
-    }
-
-    const code = searchParams.get("code");
-
-    if (!code || !state || !nonce || !contaId) {
-      closePopup("error", "Sessão OAuth inválida ou expirada. Tente conectar novamente.");
-      return;
-    }
-
     void (async () => {
+      const oauthError = searchParams.get("error_description") || searchParams.get("error");
+      const state = searchParams.get("state");
+      const { nonce, contaId, returnTo } = readMetaOAuthSession(state);
+      const fallback = returnTo || "/app";
+
+      if (oauthError) {
+        const msg =
+          oauthError === "access_denied" ? "Login com Meta cancelado." : oauthError;
+        finish("cancelled", msg, fallback);
+        return;
+      }
+
+      const code = searchParams.get("code");
+      if (!code || !state || !nonce || !contaId) {
+        finish(
+          "error",
+          "Sessão OAuth inválida ou expirada. Tente conectar novamente.",
+          fallback
+        );
+        return;
+      }
+
+      setStatusMessage("Validando sessão do Viziom…");
+      const hasSession = await waitForAuthSession();
+      if (!hasSession) {
+        finish(
+          "error",
+          "Sessão expirada. Faça login no Viziom e conecte a Meta novamente.",
+          "/login"
+        );
+        return;
+      }
+
+      setStatusMessage("Salvando conexão com a Meta…");
       try {
         await apiPost(
           "/api/leads/conectar-meta",
           { code, redirectUri: getMetaOAuthRedirectUri() },
           contaId
         );
-        closePopup("success");
+        finish("success", "Conta Meta conectada com sucesso.", fallback);
       } catch (err) {
-        closePopup("error", err instanceof Error ? err.message : "Erro ao conectar Meta.");
+        finish(
+          "error",
+          err instanceof Error ? err.message : "Erro ao conectar Meta.",
+          fallback
+        );
       }
     })();
-  }, [isPopup, navigate, searchParams]);
+  }, [navigate, searchParams]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
-      <p className="text-muted-foreground">Conectando conta Meta…</p>
+      <p className="text-muted-foreground">{statusMessage}</p>
     </div>
   );
 }
