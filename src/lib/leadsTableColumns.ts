@@ -58,7 +58,7 @@ export const DEFAULT_LEADS_TABLE_COLUMNS: LeadsTableColumnKey[] = [
 export const LEADS_TABLE_COLUMN_LABELS: Record<LeadsTableColumnKey, string> = {
   contato: "Contato",
   etapa: "Etapa",
-  campanha: "Campanha",
+  campanha: "Link rastreável",
   origem: "Origem",
   entrada: "Entrada como lead",
   dispositivo: "Dispositivo",

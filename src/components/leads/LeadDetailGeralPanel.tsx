@@ -68,7 +68,7 @@ export function LeadDetailGeralPanel({ lead, origens, loadingOrigens }: Props) {
         <InfoCard label="Telefone">
           <p className="text-lg font-semibold">{formatPhoneBR(lead.telefone_lead)}</p>
         </InfoCard>
-        <InfoCard label="Campanha">
+        <InfoCard label="Link rastreável">
           <p className="font-medium">{lead.leads_links?.nome ?? "WhatsApp direto"}</p>
         </InfoCard>
         <InfoCard label="Origem">

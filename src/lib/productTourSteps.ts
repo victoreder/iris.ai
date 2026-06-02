@@ -6,7 +6,7 @@ export const PRODUCT_TOUR_SELECTORS = {
   whatsappCreate: '[data-tour="whatsapp-create"]',
   whatsappQr: '[data-tour="whatsapp-qr"]',
   whatsappQrPanel: '[data-tour="whatsapp-qr-panel"]',
-  campaignCreate: '[data-tour="campaign-create"]',
+  linkRastreavelCreate: '[data-tour="link-rastreavel-create"]',
   metaPixelConfig: '[data-tour="meta-pixel-config"]',
   journeyFunnel: '[data-tour="journey-funnel"]',
   journeyNewStage: '[data-tour="journey-new-stage"]',
@@ -55,9 +55,9 @@ export const TOUR_STEP_CONTENT: Record<TourStepId, TourStepContent> = {
     primaryLabel: "Entendi, continuar",
   },
   [TOUR_STEP.CAMPAIGN]: {
-    title: "Crie sua primeira campanha",
+    title: "Crie seu primeiro link rastreável",
     description:
-      "Cada campanha gera links rastreáveis para anúncios, site ou WhatsApp. Você define nome, número receptor e mensagem inicial — assim o Viziom sabe de qual campanha veio cada lead e cada venda.",
+      "Cada link rastreável captura origem de anúncios, site ou WhatsApp. Você define nome, número receptor e mensagem inicial — assim o Viziom sabe de qual link veio cada lead e cada venda.",
     primaryLabel: "Ir para integração Meta",
   },
   [TOUR_STEP.META]: {
@@ -87,13 +87,13 @@ export const TOUR_STEP_CONTENT: Record<TourStepId, TourStepContent> = {
   [TOUR_STEP.LEADS]: {
     title: "Onde seus leads aparecem",
     description:
-      "Todos os contatos que passarem pelos seus links e campanhas aparecem aqui. Ao abrir um lead, você vê mensagens, origens, etapa da jornada e valor de venda quando aplicável.",
+      "Todos os contatos que passarem pelos seus links rastreáveis aparecem aqui. Ao abrir um lead, você vê mensagens, origens, etapa da jornada e valor de venda quando aplicável.",
     primaryLabel: "Ver métricas no dashboard",
   },
   [TOUR_STEP.DASHBOARD]: {
     title: "Métricas da sua empresa",
     description:
-      "Acompanhe leads, vendas, receita estimada, funil e campanhas que mais convertem. Use filtros por data, WhatsApp e UTM para analisar cada canal.",
+      "Acompanhe leads, vendas, receita estimada, funil e links rastreáveis que mais convertem. Use filtros por data, WhatsApp e UTM para analisar cada canal.",
     primaryLabel: "Concluir tour",
   },
 };

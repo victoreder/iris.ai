@@ -55,7 +55,7 @@ export function useContaSetupStatus() {
     whatsapp: "WhatsApp",
     jornada: "jornada de vendas",
     pixel: "Pixel Meta",
-    campanha: "campanha",
+    campanha: "link rastreável",
   };
 
   const needsSetup = missing.length > 0;

@@ -2,6 +2,7 @@ import { NavLink } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Shield, X } from "lucide-react";
 import { useUsuario } from "@/contexts/UsuarioContext";
 import { useAppRoutes } from "@/hooks/useAppRoutes";
+import { useMetaConnectionStatus } from "@/hooks/useMetaConnectionStatus";
 import { sidebarNavItems } from "@/lib/appNavigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,8 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const { isSuperadmin } = useUsuario();
   const routes = useAppRoutes();
-  const navItems = sidebarNavItems(routes);
+  const { connected: metaConnected } = useMetaConnectionStatus();
+  const navItems = sidebarNavItems(routes, metaConnected);
   const isCollapsedDesktop = collapsed && !mobileOpen;
 
   return (

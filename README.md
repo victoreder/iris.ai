@@ -67,7 +67,7 @@ npm run dev
 # http://localhost:5175
 ```
 
-Fluxo: `/signup` → criar empresa → `/app/channels` (WhatsApp) → campaigns → pipeline → integrations.
+Fluxo: `/signup` → criar empresa → `/app/channels` (WhatsApp) → links rastreáveis → pipeline → integrations.
 
 ## Multi-tenant
 
@@ -90,7 +90,7 @@ Fluxo: `/signup` → criar empresa → `/app/channels` (WhatsApp) → campaigns 
 |------|------|
 | `/app` | Overview (dashboard) |
 | `/app/inbox` | Leads (lista + kanban com drag-and-drop) |
-| `/app/campaigns` | Links de campanha |
+| `/app/links-rastreaveis` | Links rastreáveis |
 | `/app/pipeline` | Jornada/funil |
 | `/app/channels` | WhatsApp Evolution |
 | `/app/integrations` | Meta CAPI |

@@ -3,6 +3,7 @@ import {
   BarChart3,
   GitBranch,
   Link2,
+  Megaphone,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -31,7 +32,8 @@ export function appRoutes(contaRef: string | null) {
   return {
     dashboard: `${base}/dashboard`,
     leads: `${base}/leads`,
-    campanhas: `${base}/campanhas`,
+    linksRastreaveis: `${base}/links-rastreaveis`,
+    campanhasMensagem: `${base}/campanhas-mensagem`,
     jornada: `${base}/jornada`,
     atividade: `${base}/atividade`,
     whatsapp: `${base}/whatsapp`,
@@ -48,14 +50,27 @@ export interface AppNavItem {
   end?: boolean;
 }
 
-export function sidebarNavItems(routes: AppRoutes): AppNavItem[] {
-  return [
+export function sidebarNavItems(routes: AppRoutes, metaConnected = false): AppNavItem[] {
+  const items: AppNavItem[] = [
     { to: routes.dashboard, label: "Dashboard", icon: BarChart3, end: true },
     { to: routes.leads, label: "Leads", icon: Users },
-    { to: routes.campanhas, label: "Campanhas", icon: Link2 },
-    { to: routes.jornada, label: "Jornada de compra", icon: GitBranch },
-    { to: routes.atividade, label: "Atividade", icon: Activity },
+    { to: routes.linksRastreaveis, label: "Links rastreáveis", icon: Link2 },
   ];
+
+  if (metaConnected) {
+    items.push({
+      to: routes.campanhasMensagem,
+      label: "Campanhas de Mensagem",
+      icon: Megaphone,
+    });
+  }
+
+  items.push(
+    { to: routes.jornada, label: "Jornada de compra", icon: GitBranch },
+    { to: routes.atividade, label: "Atividade", icon: Activity }
+  );
+
+  return items;
 }
 
 export function replaceContaInPath(pathname: string, newContaRef: string): string {
@@ -73,7 +88,8 @@ export function normalizeAppPathname(pathname: string): string {
 const pageTitles: Record<string, string> = {
   "/app/dashboard": "Dashboard",
   "/app/leads": "Leads",
-  "/app/campanhas": "Campanhas",
+  "/app/links-rastreaveis": "Links rastreáveis",
+  "/app/campanhas-mensagem": "Campanhas de Mensagem",
   "/app/jornada": "Jornada de compra",
   "/app/atividade": "Atividade",
   "/app/whatsapp": "WhatsApps",
@@ -96,7 +112,12 @@ const adminPageTitles: Record<string, string> = {
 
 export function getPageTitle(pathname: string): string {
   const normalized = normalizeAppPathname(pathname);
-  if (pageTitles[normalized]) return pageTitles[normalized];
+  const legacyAliases: Record<string, string> = {
+    "/app/campanhas": "/app/links-rastreaveis",
+    "/app/campaigns": "/app/links-rastreaveis",
+  };
+  const resolved = legacyAliases[normalized] ?? normalized;
+  if (pageTitles[resolved]) return pageTitles[resolved];
   if (adminPageTitles[pathname]) return adminPageTitles[pathname];
   if (/^\/app\/leads\/[^/]+$/.test(normalized)) return "Lead";
   if (normalized.startsWith("/app/configuracoes")) return "Configurações";

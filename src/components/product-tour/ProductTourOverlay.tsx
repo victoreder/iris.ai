@@ -127,7 +127,7 @@ function resolveSelector(step: TourStepId, whatsappQrOpen: boolean): string | nu
         ? PRODUCT_TOUR_SELECTORS.whatsappQr
         : PRODUCT_TOUR_SELECTORS.whatsappCreate;
     case TOUR_STEP.CAMPAIGN:
-      return PRODUCT_TOUR_SELECTORS.campaignCreate;
+      return PRODUCT_TOUR_SELECTORS.linkRastreavelCreate;
     case TOUR_STEP.META:
       return PRODUCT_TOUR_SELECTORS.metaPixelConfig;
     case TOUR_STEP.JOURNEY_FUNNEL:

@@ -43,7 +43,7 @@ export function LeadDetailOriginsSection({ lead, origens }: Props) {
       <p className="mt-1 text-xs text-muted-foreground">
         {origens.length === 1
           ? "Entrada única registrada para este telefone."
-          : `${origens.length} entradas por campanhas diferentes.`}
+          : `${origens.length} entradas por links rastreáveis diferentes.`}
       </p>
 
       <div className="mt-4 space-y-4">
@@ -63,7 +63,7 @@ export function LeadDetailOriginsSection({ lead, origens }: Props) {
 
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <p className="text-sm">
-                <span className="text-muted-foreground">Campanha: </span>
+                <span className="text-muted-foreground">Link rastreável: </span>
                 <span className="font-medium">{origemChannelLabel(origem, lead)}</span>
               </p>
               <p className="text-sm">

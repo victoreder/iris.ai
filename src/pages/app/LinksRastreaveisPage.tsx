@@ -44,7 +44,7 @@ const emptyForm: LinkForm = {
   ativo: true,
 };
 
-export function CampaignsPage() {
+export function LinksRastreaveisPage() {
   const { contaAtiva, canWrite, canDelete } = useConta();
   const [links, setLinks] = useState<LeadsLink[]>([]);
   const [instancias, setInstancias] = useState<LeadsInstanciaWhatsapp[]>([]);
@@ -122,7 +122,7 @@ export function CampaignsPage() {
           },
           contaAtiva.id
         );
-        toast.success("Campanha atualizada.");
+        toast.success("Link rastreável atualizado.");
       } else {
         await apiPost(
           "/api/leads/criar-link",
@@ -133,7 +133,7 @@ export function CampaignsPage() {
           },
           contaAtiva.id
         );
-        toast.success("Campanha criada.");
+        toast.success("Link rastreável criado.");
       }
       setDialogOpen(false);
       void load();
@@ -148,7 +148,7 @@ export function CampaignsPage() {
     if (!contaAtiva || !deleteId || !canDelete) return;
     try {
       await apiPost("/api/leads/excluir-link", { linkId: deleteId }, contaAtiva.id);
-      toast.success("Campanha excluída.");
+      toast.success("Link rastreável excluído.");
       setDeleteId(null);
       void load();
     } catch (err) {
@@ -170,18 +170,18 @@ export function CampaignsPage() {
       <div className="flex justify-end">
         {canWrite && (
           <Button
-            data-tour="campaign-create"
+            data-tour="link-rastreavel-create"
             onClick={openCreate}
             disabled={instancias.length === 0}
           >
-            <Plus className="h-4 w-4" /> Nova campanha
+            <Plus className="h-4 w-4" /> Novo link rastreável
           </Button>
         )}
       </div>
 
       {instancias.length === 0 && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          Conecte um WhatsApp em WhatsApps antes de criar campanhas.
+          Conecte um WhatsApp em WhatsApps antes de criar links rastreáveis.
         </div>
       )}
 
@@ -260,7 +260,7 @@ export function CampaignsPage() {
             {links.length === 0 && (
               <TableRow>
                 <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
-                  Nenhuma campanha criada
+                  Nenhum link rastreável criado
                 </TableCell>
               </TableRow>
             )}
@@ -269,10 +269,10 @@ export function CampaignsPage() {
       </Card>
 
       <DialogRoot open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent title={editing ? "Editar campanha" : "Nova campanha"}>
+        <DialogContent title={editing ? "Editar link rastreável" : "Novo link rastreável"}>
           <div className="space-y-4">
             <div className="space-y-1">
-              <Label>Nome da campanha</Label>
+              <Label>Nome do link</Label>
               <Input
                 value={form.nome}
                 onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))}
@@ -308,7 +308,7 @@ export function CampaignsPage() {
                   checked={form.ativo}
                   onChange={(e) => setForm((f) => ({ ...f, ativo: e.target.checked }))}
                 />
-                <Label htmlFor="ativo">Campanha ativa</Label>
+                <Label htmlFor="ativo">Link ativo</Label>
               </div>
             )}
           </div>
@@ -324,7 +324,7 @@ export function CampaignsPage() {
       </DialogRoot>
 
       <DialogRoot open={!!infoLink} onOpenChange={(v) => !v && setInfoLink(null)}>
-        <DialogContent title="Informações da campanha" className="max-w-lg">
+        <DialogContent title="Informações do link rastreável" className="max-w-lg">
           {infoLink && (
             <div className="space-y-4 text-sm">
               <div className="grid gap-3 sm:grid-cols-2">
@@ -405,8 +405,8 @@ export function CampaignsPage() {
 
       <DialogRoot open={!!deleteId} onOpenChange={(v) => !v && setDeleteId(null)}>
         <DialogContent
-          title="Excluir campanha"
-          description="Os cliques desta campanha também serão removidos."
+          title="Excluir link rastreável"
+          description="Os cliques deste link também serão removidos."
         >
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteId(null)}>

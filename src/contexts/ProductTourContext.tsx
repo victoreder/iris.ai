@@ -56,9 +56,9 @@ export function ProductTourProvider({ children }: { children: ReactNode }) {
   }, [navigate, routes.whatsapp]);
 
   const advanceFromWhatsapp = useCallback(() => {
-    navigate(routes.campanhas);
+    navigate(routes.linksRastreaveis);
     setStep(TOUR_STEP.CAMPAIGN);
-  }, [navigate, routes.campanhas]);
+  }, [navigate, routes.linksRastreaveis]);
 
   const advanceFromCampaign = useCallback(() => {
     navigate(metaIntegrationsPath(routes));

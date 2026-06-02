@@ -236,7 +236,7 @@ export function InboxPage() {
     }
     if (linkFilter !== "all") {
       const link = links.find((l) => l.id === linkFilter);
-      labels.push(link?.nome ?? "Campanha");
+      labels.push(link?.nome ?? "Link rastreável");
     }
     labels.push(...getActiveLeadsUtmFilterLabels(utmFilters));
     return labels;
@@ -404,7 +404,7 @@ export function InboxPage() {
                 <LeadsWhatsappFilter value={instanciaFilter} onChange={setInstanciaFilter} />
               </div>
               <div className="space-y-1">
-                <Label>Campanha</Label>
+                <Label>Link rastreável</Label>
                 <Select value={linkFilter} onChange={(e) => setLinkFilter(e.target.value)}>
                   <option value="all">Todas</option>
                   {linksFiltrados.map((l) => (

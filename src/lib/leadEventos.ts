@@ -56,8 +56,8 @@ export function describeLeadEvento(evento: LeadsCliqueEvento): string {
       const ordemLabel =
         ordem === 2 ? "2ª origem" : ordem === 3 ? "3ª origem" : ordem ? `${ordem}ª origem` : "Nova origem";
       return campanha
-        ? `${ordemLabel} registrada — campanha "${campanha}"`
-        : `${ordemLabel} registrada — novo contato pela mesma campanha ou link`;
+        ? `${ordemLabel} registrada — link rastreável "${campanha}"`
+        : `${ordemLabel} registrada — novo contato pelo mesmo link rastreável`;
     }
     default:
       return "Evento";

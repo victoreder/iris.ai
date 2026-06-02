@@ -365,7 +365,7 @@ export function ChannelsPage() {
         <DialogContent title="Excluir WhatsApp?">
           <p className="text-sm text-muted-foreground">
             A instância <strong>{deleteTarget?.nome}</strong> será removida do Viziom e da Evolution.
-            Links de campanha vinculados a este número também serão excluídos.
+            Links rastreáveis vinculados a este número também serão excluídos.
           </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteTarget(null)}>

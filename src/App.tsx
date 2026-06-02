@@ -19,7 +19,8 @@ import { QrConnectPage } from "@/pages/QrConnectPage";
 import { OverviewPage } from "@/pages/app/OverviewPage";
 import { InboxPage } from "@/pages/app/InboxPage";
 import { LeadDetailPage } from "@/pages/app/LeadDetailPage";
-import { CampaignsPage } from "@/pages/app/CampaignsPage";
+import { LinksRastreaveisPage } from "@/pages/app/LinksRastreaveisPage";
+import { MetaCampanhasMensagemPage } from "@/pages/app/MetaCampanhasMensagemPage";
 import { PipelinePage } from "@/pages/app/PipelinePage";
 import { ChannelsPage } from "@/pages/app/ChannelsPage";
 import { IntegrationsPage } from "@/pages/app/IntegrationsPage";
@@ -110,6 +111,7 @@ export default function App() {
               <Route path="dashboard" element={<AppLegacyRedirect />} />
               <Route path="leads" element={<AppLegacyRedirect />} />
               <Route path="leads/:leadId" element={<AppLegacyRedirect />} />
+              <Route path="links-rastreaveis" element={<AppLegacyRedirect />} />
               <Route path="campanhas" element={<AppLegacyRedirect />} />
               <Route path="jornada" element={<AppLegacyRedirect />} />
               <Route path="atividade" element={<AppLegacyRedirect />} />
@@ -136,7 +138,10 @@ export default function App() {
                   <Route path="dashboard" element={<OverviewPage />} />
                   <Route path="leads" element={<InboxPage />} />
                   <Route path="leads/:leadId" element={<LeadDetailPage />} />
-                  <Route path="campanhas" element={<CampaignsPage />} />
+                  <Route path="campanhas" element={<Navigate to="links-rastreaveis" replace />} />
+                  <Route path="campaigns" element={<Navigate to="links-rastreaveis" replace />} />
+                  <Route path="links-rastreaveis" element={<LinksRastreaveisPage />} />
+                  <Route path="campanhas-mensagem" element={<MetaCampanhasMensagemPage />} />
                   <Route path="jornada" element={<PipelinePage />} />
                   <Route path="atividade" element={<ActivityPage />} />
                   <Route path="whatsapp" element={<ChannelsPage />} />

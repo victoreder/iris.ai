@@ -183,12 +183,12 @@ export function DashboardTopCampaigns({
   return (
     <Card className="h-full">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base font-semibold">Top campanhas</CardTitle>
+        <CardTitle className="text-base font-semibold">Top links rastreáveis</CardTitle>
         <p className="text-xs text-muted-foreground">Links de captura com mais leads convertidos</p>
       </CardHeader>
       <CardContent className="space-y-3">
         {campaigns.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">Sem campanhas no período</p>
+          <p className="py-8 text-center text-sm text-muted-foreground">Sem links rastreáveis no período</p>
         ) : (
           campaigns.map((c) => (
             <div key={c.nome}>

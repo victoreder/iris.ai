@@ -9,7 +9,7 @@ function escapeCsv(value: string): string {
 }
 
 export function exportLeadsCsv(leads: LeadsClique[], filename = "leads.csv") {
-  const headers = ["Telefone", "Etapa", "Campanha", "Origem", "Entrada"];
+  const headers = ["Telefone", "Etapa", "Link rastreável", "Origem", "Entrada"];
   const rows = leads.map((c) => [
     formatPhoneBR(c.telefone_lead),
     c.leads_jornada_etapas?.nome ?? "",

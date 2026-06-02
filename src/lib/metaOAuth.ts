@@ -1,5 +1,6 @@
 const META_OAUTH_VERSION = "v25.0";
 const META_OAUTH_CALLBACK_PATH = "/auth/meta/callback";
+const META_OAUTH_WINDOW_NAME = "viziom_meta_oauth";
 const META_OAUTH_STORAGE = {
   nonce: "meta_oauth_nonce",
   contaId: "meta_oauth_conta_id",
@@ -55,7 +56,7 @@ export function readMetaOAuthSession() {
   };
 }
 
-function buildMetaOAuthUrl(contaId: string, returnTo: string): string {
+export function buildMetaOAuthUrl(contaId: string, returnTo: string): string {
   const appId = getMetaAppId();
   if (!appId) throw new Error("VITE_META_APP_ID não configurado.");
 
@@ -83,17 +84,35 @@ function buildMetaOAuthUrl(contaId: string, returnTo: string): string {
   return `https://www.facebook.com/${META_OAUTH_VERSION}/dialog/oauth?${params.toString()}`;
 }
 
-function openMetaOAuthPopup(url: string): Window | null {
-  const width = 560;
-  const height = 720;
-  const left = Math.max(0, window.screenX + (window.outerWidth - width) / 2);
-  const top = Math.max(0, window.screenY + (window.outerHeight - height) / 2);
+function metaOAuthWindowFeatures(): string {
+  const width = 520;
+  const height = 680;
+  const left = Math.round(window.screenX + (window.outerWidth - width) / 2);
+  const top = Math.round(window.screenY + (window.outerHeight - height) / 2);
 
-  return window.open(
-    url,
-    "viziom_meta_oauth",
-    `popup=yes,width=${width},height=${height},left=${left},top=${top}`
-  );
+  return [
+    `width=${width}`,
+    `height=${height}`,
+    `left=${left}`,
+    `top=${top}`,
+    "toolbar=no",
+    "menubar=no",
+    "location=yes",
+    "status=no",
+    "scrollbars=yes",
+    "resizable=yes",
+  ].join(",");
+}
+
+/** Abre janela vazia no clique (síncrono) — maximiza chance de popup em vez de nova guia. */
+export function openMetaOAuthPopupWindow(): Window | null {
+  const features = metaOAuthWindowFeatures();
+  const popup = window.open("about:blank", META_OAUTH_WINDOW_NAME, features);
+  return popup;
+}
+
+export function focusMetaOAuthPopup(popup: Window | null): void {
+  popup?.focus();
 }
 
 export function postMetaOAuthResult(message: Omit<MetaOAuthMessage, "type">): void {
@@ -102,18 +121,7 @@ export function postMetaOAuthResult(message: Omit<MetaOAuthMessage, "type">): vo
   }
 }
 
-/** Abre popup do Facebook; mantém o Viziom aberto na aba original. */
-export function startMetaOAuthPopup(
-  contaId: string,
-  returnTo: string
-): Promise<MetaOAuthMessage["status"]> {
-  const url = buildMetaOAuthUrl(contaId, returnTo);
-  const popup = openMetaOAuthPopup(url);
-
-  if (!popup) {
-    throw new Error("Popup bloqueado. Permita popups para app.viziom.ia.br e tente novamente.");
-  }
-
+export function watchMetaOAuthPopup(popup: Window): Promise<MetaOAuthMessage["status"]> {
   return new Promise((resolve) => {
     let settled = false;
 
@@ -140,6 +148,32 @@ export function startMetaOAuthPopup(
       }
     }, 400);
   });
+}
+
+/**
+ * Inicia OAuth: abre popup vazio e navega para o Facebook.
+ * Chame openMetaOAuthPopupWindow() no clique antes de qualquer await.
+ */
+export function beginMetaOAuthPopup(
+  popup: Window,
+  contaId: string,
+  returnTo: string
+): Promise<MetaOAuthMessage["status"]> {
+  const url = buildMetaOAuthUrl(contaId, returnTo);
+  popup.location.replace(url);
+  return watchMetaOAuthPopup(popup);
+}
+
+/** Abre popup do Facebook; mantém o Viziom aberto na aba original. */
+export function startMetaOAuthPopup(
+  contaId: string,
+  returnTo: string
+): Promise<MetaOAuthMessage["status"]> {
+  const popup = openMetaOAuthPopupWindow();
+  if (!popup) {
+    throw new Error("Popup bloqueado. Permita popups para app.viziom.ia.br e tente novamente.");
+  }
+  return beginMetaOAuthPopup(popup, contaId, returnTo);
 }
 
 /** Fallback: redireciona a aba inteira (usado se popup for bloqueado). */

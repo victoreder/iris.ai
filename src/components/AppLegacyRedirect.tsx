@@ -4,6 +4,11 @@ import { contaUrlRef } from "@/lib/appNavigation";
 import { useUsuario } from "@/contexts/UsuarioContext";
 
 /** Redireciona rotas /app/* sem ID de conta para /app/:numero/* */
+const LEGACY_PATH_ALIASES: Record<string, string> = {
+  "/campanhas": "/links-rastreaveis",
+  "/campaigns": "/links-rastreaveis",
+};
+
 export function AppLegacyRedirect() {
   const { pathname, search, hash } = useLocation();
   const { contas, contaAtiva, loading } = useConta();
@@ -23,7 +28,8 @@ export function AppLegacyRedirect() {
     return <Navigate to="/login" replace />;
   }
 
-  const suffix = pathname.slice("/app".length) || "/dashboard";
+  let suffix = pathname.slice("/app".length) || "/dashboard";
+  suffix = LEGACY_PATH_ALIASES[suffix] ?? suffix;
   return <Navigate to={`/app/${contaUrlRef(conta)}${suffix}${search}${hash}`} replace />;
 }
 

@@ -346,12 +346,12 @@ export function OnboardingWizard() {
 
   const criarCampanha = async () => {
     if (!campanhaNome.trim() || !campanhaMensagem.trim()) {
-      toast.error("Preencha os dados da campanha para continuar.");
+      toast.error("Preencha os dados do link rastreável para continuar.");
       return;
     }
     const instanciaId = instanciaSelecionada || instancias[0]?.id;
     if (!instanciaId) {
-      toast.error("Conecte um WhatsApp antes de criar a campanha.");
+      toast.error("Conecte um WhatsApp antes de criar o link rastreável.");
       return;
     }
     setCriandoCampanha(true);
@@ -363,7 +363,7 @@ export function OnboardingWizard() {
       );
       await irParaEtapa(7);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erro ao criar campanha.");
+      toast.error(err instanceof Error ? err.message : "Erro ao criar link rastreável.");
     } finally {
       setCriandoCampanha(false);
     }
@@ -405,7 +405,7 @@ export function OnboardingWizard() {
             : etapa === 5
               ? "Meta Ads"
               : etapa === 6
-                ? "Primeira campanha"
+                ? "Primeiro link rastreável"
                 : "Concluído";
 
   return (
@@ -703,7 +703,7 @@ export function OnboardingWizard() {
             <div className="space-y-5">
               <div className="space-y-2">
                 <h3 className="text-base font-semibold">
-                  Agora vamos criar sua primeira campanha para começar a rastrear seus leads e vendas
+                  Agora vamos criar seu primeiro link rastreável para começar a rastrear seus leads e vendas
                 </h3>
                 <p className="text-sm text-muted-foreground">
                   Informe um nome e a mensagem inicial que o lead verá ao abrir o WhatsApp.
@@ -711,11 +711,11 @@ export function OnboardingWizard() {
               </div>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Nome da campanha</Label>
+                  <Label>Nome do link rastreável</Label>
                   <Input
                     value={campanhaNome}
                     onChange={(e) => setCampanhaNome(e.target.value)}
-                    placeholder="Ex.: Campanha Meta — Produto X"
+                    placeholder="Ex.: Meta Ads — Produto X"
                   />
                 </div>
                 <div className="space-y-2">
