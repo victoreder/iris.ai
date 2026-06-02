@@ -5,6 +5,7 @@ import { MetaConnectionIndicator } from "@/components/layout/MetaConnectionIndic
 import { useConta } from "@/contexts/ContaContext";
 import { useAppRoutes } from "@/hooks/useAppRoutes";
 import { useMetaConnectionStatus } from "@/hooks/useMetaConnectionStatus";
+import { apiPost } from "@/lib/api";
 import {
   beginMetaOAuthPopup,
   focusMetaOAuthPopup,
@@ -21,6 +22,7 @@ export function MetaConnectSettingsPage() {
   const routes = useAppRoutes();
   const { loading, connected, reload } = useMetaConnectionStatus();
   const [connecting, setConnecting] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
   const popupRef = useRef<Window | null>(null);
   const metaAppId = getMetaAppId();
 
@@ -62,6 +64,25 @@ export function MetaConnectSettingsPage() {
         popupRef.current = null;
         setConnecting(false);
       });
+  };
+
+  const desconectarMeta = async () => {
+    if (!contaAtiva || !isAdmin || !connected) return;
+    const confirmar = window.confirm(
+      "Desconectar a Meta? Campanhas de Mensagem e eventos CAPI que dependem do token OAuth deixarão de funcionar até reconectar."
+    );
+    if (!confirmar) return;
+
+    setDisconnecting(true);
+    try {
+      await apiPost("/api/leads/desconectar-meta", {}, contaAtiva.id);
+      toast.success("Conta Meta desconectada.");
+      void reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao desconectar Meta.");
+    } finally {
+      setDisconnecting(false);
+    }
   };
 
   if (loading) return <Skeleton className="h-64 w-full" />;
@@ -114,20 +135,33 @@ export function MetaConnectSettingsPage() {
                         : "Abre janela do Facebook — o Viziom permanece aberto aqui."}
                     </p>
                   </div>
-                  <Button
-                    type="button"
-                    variant={connected ? "outline" : "default"}
-                    onClick={conectarMeta}
-                    disabled={connecting || !metaAppId}
-                    className="gap-2"
-                  >
-                    <MetaLogoIcon className="h-4 w-auto" />
-                    {connecting
-                      ? "Aguardando Meta…"
-                      : connected
-                        ? "Reconectar Meta"
-                        : "Conectar Meta"}
-                  </Button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      variant={connected ? "outline" : "default"}
+                      onClick={conectarMeta}
+                      disabled={connecting || disconnecting || !metaAppId}
+                      className="gap-2"
+                    >
+                      <MetaLogoIcon className="h-4 w-auto" />
+                      {connecting
+                        ? "Aguardando Meta…"
+                        : connected
+                          ? "Reconectar Meta"
+                          : "Conectar Meta"}
+                    </Button>
+                    {connected && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={desconectarMeta}
+                        disabled={connecting || disconnecting}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        {disconnecting ? "Desconectando…" : "Desconectar"}
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 {!metaAppId && (
                   <p className="text-xs text-amber-700 dark:text-amber-400">
