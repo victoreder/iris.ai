@@ -1,37 +1,33 @@
-import { useState } from "react";
 import { toast } from "sonner";
 import { MetaLogoIcon } from "@/components/leads/MetaOriginBadge";
 import { MetaConnectionIndicator } from "@/components/layout/MetaConnectionIndicator";
 import { useConta } from "@/contexts/ContaContext";
+import { useAppRoutes } from "@/hooks/useAppRoutes";
 import { useMetaConnectionStatus } from "@/hooks/useMetaConnectionStatus";
-import { apiPost } from "@/lib/api";
-import { getMetaAppId, loginWithMetaFacebook } from "@/lib/metaFacebookSdk";
+import { getMetaAppId, startMetaOAuthRedirect } from "@/lib/metaOAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/badge";
 
 export function MetaConnectSettingsPage() {
   const { contaAtiva, isAdmin } = useConta();
-  const { loading, connected, reload } = useMetaConnectionStatus();
-  const [connecting, setConnecting] = useState(false);
+  const routes = useAppRoutes();
+  const { loading, connected } = useMetaConnectionStatus();
   const metaAppId = getMetaAppId();
 
-  const conectarMeta = async () => {
+  const conectarMeta = () => {
     if (!contaAtiva || !isAdmin) return;
     if (!metaAppId) {
       toast.error("Configure VITE_META_APP_ID no ambiente.");
       return;
     }
-    setConnecting(true);
     try {
-      const shortToken = await loginWithMetaFacebook();
-      await apiPost("/api/leads/conectar-meta", { accessToken: shortToken }, contaAtiva.id);
-      toast.success("Conta Meta conectada com sucesso.");
-      void reload();
+      startMetaOAuthRedirect(
+        contaAtiva.id,
+        `${routes.configuracoes}/conectar-meta`
+      );
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erro ao conectar Meta.");
-    } finally {
-      setConnecting(false);
+      toast.error(err instanceof Error ? err.message : "Erro ao iniciar login Meta.");
     }
   };
 
@@ -68,11 +64,11 @@ export function MetaConnectSettingsPage() {
                   type="button"
                   variant={connected ? "outline" : "default"}
                   onClick={conectarMeta}
-                  disabled={connecting || !metaAppId}
+                  disabled={!metaAppId}
                   className="gap-2"
                 >
                   <MetaLogoIcon className="h-4 w-auto" />
-                  {connecting ? "Conectando…" : connected ? "Reconectar Meta" : "Conectar Meta"}
+                  {connected ? "Reconectar Meta" : "Conectar Meta"}
                 </Button>
               </div>
               {!metaAppId && (

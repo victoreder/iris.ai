@@ -1,4 +1,4 @@
-const META_GRAPH_VERSION = "v21.0";
+const META_GRAPH_VERSION = "v25.0";
 
 function getMetaAppCredentials() {
   const appId =
@@ -23,7 +23,52 @@ async function graphGet(path, accessToken, params = {}) {
   return body;
 }
 
-/** Troca token curto (FB.login) por token longo (~60 dias). */
+/** Valida redirect_uri usado no fluxo OAuth code. */
+export function assertMetaOAuthRedirectUri(redirectUri) {
+  const normalized = String(redirectUri ?? "").trim().replace(/\/+$/, "");
+  if (!normalized.endsWith("/auth/meta/callback")) {
+    throw new Error("redirect_uri inválido.");
+  }
+  const allowedBases = [
+    process.env.META_OAUTH_REDIRECT_URI,
+    process.env.VITE_APP_PUBLIC_URL,
+    process.env.APP_PUBLIC_URL,
+    "http://localhost:5175",
+  ]
+    .filter(Boolean)
+    .map((s) => String(s).trim().replace(/\/+$/, ""));
+
+  const ok = allowedBases.some((base) => normalized === `${base}/auth/meta/callback`);
+  if (!ok) throw new Error("redirect_uri não permitido.");
+  return normalized;
+}
+
+/** Troca authorization code (response_type=code) por access token curto. */
+export async function exchangeMetaAuthCode(code, redirectUri) {
+  assertMetaOAuthRedirectUri(redirectUri);
+  const { appId, appSecret } = getMetaAppCredentials();
+  const qs = new URLSearchParams({
+    client_id: appId,
+    client_secret: appSecret,
+    redirect_uri: redirectUri,
+    code: String(code).trim(),
+  });
+  const res = await fetch(
+    `https://graph.facebook.com/${META_GRAPH_VERSION}/oauth/access_token?${qs}`
+  );
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(body?.error?.message || `Meta OAuth HTTP ${res.status}`);
+  }
+  const accessToken = String(body?.access_token ?? "").trim();
+  if (!accessToken) throw new Error("Meta não retornou access token.");
+  return {
+    accessToken,
+    expiresIn: Number(body?.expires_in ?? 0) || null,
+  };
+}
+
+/** Troca token curto por token longo (~60 dias). */
 export async function exchangeMetaShortLivedToken(shortLivedToken) {
   const { appId, appSecret } = getMetaAppCredentials();
   const qs = new URLSearchParams({

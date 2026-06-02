@@ -4,6 +4,8 @@ import { onlyDigits } from "./leadsUtils.js";
 import { logLeadsEvent } from "./leadsLogger.js";
 import { recordMetaEnviado } from "./leadEventos.js";
 
+const META_GRAPH_VERSION = "v25.0";
+
 function sha256(value) {
   return crypto.createHash("sha256").update(value).digest("hex");
 }
@@ -117,7 +119,7 @@ export async function sendMetaConversionEvent({
   const testCode = String(config?.meta_test_event_code ?? "").trim();
   if (testCode) payload.test_event_code = testCode;
 
-  const url = `https://graph.facebook.com/v21.0/${pixelId}/events?access_token=${encodeURIComponent(accessToken)}`;
+  const url = `https://graph.facebook.com/${META_GRAPH_VERSION}/${pixelId}/events?access_token=${encodeURIComponent(accessToken)}`;
 
   const res = await fetch(url, {
     method: "POST",
@@ -278,7 +280,7 @@ export async function sendMetaTestEvent(contaId) {
   };
   if (testCode) payload.test_event_code = testCode;
 
-  const url = `https://graph.facebook.com/v21.0/${pixelId}/events?access_token=${encodeURIComponent(accessToken)}`;
+  const url = `https://graph.facebook.com/${META_GRAPH_VERSION}/${pixelId}/events?access_token=${encodeURIComponent(accessToken)}`;
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

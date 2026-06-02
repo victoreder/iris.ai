@@ -12,6 +12,7 @@ import { EnvSetupScreen } from "@/components/EnvSetupScreen";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { LoginPage } from "@/pages/auth/LoginPage";
 import { InviteAcceptPage } from "@/pages/auth/InviteAcceptPage";
+import { MetaOAuthCallbackPage } from "@/pages/auth/MetaOAuthCallbackPage";
 import { SignUpPage } from "@/pages/auth/SignUpPage";
 import { LeadRedirect } from "@/pages/LeadRedirect";
 import { QrConnectPage } from "@/pages/QrConnectPage";
@@ -85,6 +86,14 @@ export default function App() {
             </Route>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/auth/convite" element={<InviteAcceptPage />} />
+            <Route
+              path="/auth/meta/callback"
+              element={
+                <ProtectedRoute>
+                  <MetaOAuthCallbackPage />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/signup" element={<SignUpPage />} />
             <Route
               path="/app"
