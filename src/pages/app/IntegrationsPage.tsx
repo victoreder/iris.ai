@@ -15,7 +15,6 @@ export function IntegrationsPage() {
   const [config, setConfig] = useState<LeadsConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [pixelId, setPixelId] = useState("");
-  const [accessToken, setAccessToken] = useState("");
   const [testCode, setTestCode] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -24,7 +23,7 @@ export function IntegrationsPage() {
     setLoading(true);
     const { data } = await supabase
       .from("leads_config")
-      .select("*")
+      .select("id, conta_id, meta_pixel_id, meta_test_event_code, evento_padrao, updated_at")
       .eq("conta_id", contaAtiva.id)
       .maybeSingle();
 
@@ -32,7 +31,6 @@ export function IntegrationsPage() {
     setConfig(cfg);
     if (cfg) {
       setPixelId(cfg.meta_pixel_id ?? "");
-      setAccessToken(cfg.meta_access_token ?? "");
       setTestCode(cfg.meta_test_event_code ?? "");
     }
     setLoading(false);
@@ -56,7 +54,6 @@ export function IntegrationsPage() {
         "/api/leads/salvar-config-meta",
         {
           metaPixelId: pixelId.trim(),
-          metaAccessToken: accessToken.trim(),
           metaTestEventCode: testCode.trim() || null,
         },
         contaAtiva.id
@@ -84,10 +81,6 @@ export function IntegrationsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <p className="text-muted-foreground">Meta Conversions API</p>
-      </div>
-
       <Card
         id={META_PIXEL_CONFIG_HASH}
         data-tour="meta-pixel-config"
@@ -96,7 +89,8 @@ export function IntegrationsPage() {
         <CardHeader>
           <CardTitle className="text-base">Meta Pixel + CAPI</CardTitle>
           <CardDescription>
-            Eventos por etapa são configurados na aba Pipeline. Aqui você define pixel e token.
+            Informe o Pixel ID e o código de teste. Eventos por etapa são configurados na Jornada de
+            compra.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -106,15 +100,7 @@ export function IntegrationsPage() {
               value={pixelId}
               onChange={(e) => setPixelId(e.target.value)}
               disabled={!isAdmin}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label>Access Token (CAPI)</Label>
-            <Input
-              type="password"
-              value={accessToken}
-              onChange={(e) => setAccessToken(e.target.value)}
-              disabled={!isAdmin}
+              placeholder="Ex.: 123456789012345"
             />
           </div>
           <div className="space-y-1">
@@ -131,7 +117,7 @@ export function IntegrationsPage() {
               <Button onClick={salvar} disabled={saving}>
                 {saving ? "Salvando…" : "Salvar"}
               </Button>
-              <Button variant="outline" onClick={testar} disabled={!config?.meta_pixel_id}>
+              <Button variant="outline" onClick={testar} disabled={!config?.meta_pixel_id && !pixelId}>
                 Enviar evento de teste (Lead)
               </Button>
             </div>

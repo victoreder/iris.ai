@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Link, Navigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { resolvePostLoginPath } from "@/lib/authRedirect";
 import { isInviteFlowPending } from "@/lib/authInvite";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,13 +10,15 @@ import { Input, Label } from "@/components/ui/input";
 
 export function LoginPage() {
   const { signIn, user, loading } = useAuth();
+  const location = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const redirectTo = resolvePostLoginPath(location.search);
 
   if (!loading && user) {
     if (isInviteFlowPending()) return <Navigate to="/auth/convite" replace />;
-    return <Navigate to="/app" replace />;
+    return <Navigate to={redirectTo} replace />;
   }
 
   if (loading) {

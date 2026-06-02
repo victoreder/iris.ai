@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { LogOut, MessageCircle, Settings, User } from "lucide-react";
+import { MetaLogoIcon } from "@/components/leads/MetaOriginBadge";
+import { MetaConnectionIndicator } from "@/components/layout/MetaConnectionIndicator";
+import { useMetaConnectionStatus } from "@/hooks/useMetaConnectionStatus";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUsuario } from "@/contexts/UsuarioContext";
 import { useAppRoutes } from "@/hooks/useAppRoutes";
@@ -22,6 +25,7 @@ export function ProfileMenu() {
   const { usuario } = useUsuario();
   const routes = useAppRoutes();
   const tour = useProductTourOptional();
+  const { connected: metaConnected } = useMetaConnectionStatus();
   const [menuOpen, setMenuOpen] = useState(false);
   const tourProfileStep = tour?.isProfileStep ?? false;
 
@@ -69,6 +73,18 @@ export function ProfileMenu() {
           <Link to={routes.whatsapp}>
             <MessageCircle className="h-4 w-4" />
             WhatsApps
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild data-tour="profile-meta-connect">
+          <Link
+            to={`${routes.configuracoes}/conectar-meta`}
+            className="flex w-full items-center justify-between gap-2"
+          >
+            <span className="flex items-center gap-2">
+              <MetaLogoIcon className="h-4 w-auto" />
+              Conectar Meta
+            </span>
+            <MetaConnectionIndicator connected={metaConnected} />
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />

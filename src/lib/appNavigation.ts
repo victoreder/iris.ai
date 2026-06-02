@@ -81,6 +81,7 @@ const pageTitles: Record<string, string> = {
   "/app/configuracoes/conta": "Conta",
   "/app/configuracoes/equipe": "Equipe",
   "/app/configuracoes/plano": "Plano",
+  "/app/configuracoes/conectar-meta": "Conectar Meta",
   "/app/configuracoes/integracoes": "Meta Pixel",
 };
 

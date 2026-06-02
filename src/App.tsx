@@ -22,6 +22,7 @@ import { CampaignsPage } from "@/pages/app/CampaignsPage";
 import { PipelinePage } from "@/pages/app/PipelinePage";
 import { ChannelsPage } from "@/pages/app/ChannelsPage";
 import { IntegrationsPage } from "@/pages/app/IntegrationsPage";
+import { MetaConnectSettingsPage } from "@/pages/settings/MetaConnectSettingsPage";
 import { ActivityPage } from "@/pages/app/ActivityPage";
 import { ProfileSettingsPage } from "@/pages/settings/ProfileSettingsPage";
 import { AccountSettingsPage } from "@/pages/settings/AccountSettingsPage";
@@ -40,6 +41,7 @@ import { ContaUrlSync } from "@/components/ContaUrlSync";
 import { LegalLayout } from "@/layouts/LegalLayout";
 import { PoliticaPrivacidadePage } from "@/pages/legal/PoliticaPrivacidadePage";
 import { TermosDeUsoPage } from "@/pages/legal/TermosDeUsoPage";
+import { buildLoginPath } from "@/lib/authRedirect";
 
 function SysLegacyRedirect() {
   const { pathname, search, hash } = useLocation();
@@ -49,6 +51,7 @@ function SysLegacyRedirect() {
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -56,7 +59,10 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) {
+    const from = `${location.pathname}${location.search}${location.hash}`;
+    return <Navigate to={buildLoginPath(from)} replace />;
+  }
   return <>{children}</>;
 }
 
@@ -131,6 +137,7 @@ export default function App() {
                     <Route path="conta" element={<AccountSettingsPage />} />
                     <Route path="equipe" element={<TeamSettingsPage />} />
                     <Route path="plano" element={<BillingSettingsPage />} />
+                    <Route path="conectar-meta" element={<MetaConnectSettingsPage />} />
                     <Route path="integracoes" element={<IntegrationsPage />} />
                   </Route>
                 </Route>
