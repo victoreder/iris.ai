@@ -7,6 +7,36 @@ const META_OAUTH_STORAGE = {
   returnTo: "meta_oauth_return",
 } as const;
 
+type MetaOAuthStatePayload = {
+  n: string;
+  c: string;
+  r: string;
+};
+
+function writeMetaOAuthStorage(payload: MetaOAuthStatePayload): void {
+  localStorage.setItem(META_OAUTH_STORAGE.nonce, payload.n);
+  localStorage.setItem(META_OAUTH_STORAGE.contaId, payload.c);
+  localStorage.setItem(META_OAUTH_STORAGE.returnTo, payload.r);
+}
+
+function encodeMetaOAuthState(payload: MetaOAuthStatePayload): string {
+  const json = JSON.stringify(payload);
+  return btoa(json).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function decodeMetaOAuthState(state: string): MetaOAuthStatePayload | null {
+  try {
+    const padded = state.replace(/-/g, "+").replace(/_/g, "/");
+    const padLen = (4 - (padded.length % 4)) % 4;
+    const json = atob(padded + "=".repeat(padLen));
+    const data = JSON.parse(json) as Partial<MetaOAuthStatePayload>;
+    if (!data.n || !data.c) return null;
+    return { n: data.n, c: data.c, r: data.r ?? "/app" };
+  } catch {
+    return null;
+  }
+}
+
 export const META_OAUTH_MESSAGE = "viziom:meta-oauth" as const;
 
 export type MetaOAuthMessage = {
@@ -43,16 +73,25 @@ export function getMetaOAuthRedirectUri(): string {
 }
 
 export function clearMetaOAuthSession(): void {
-  sessionStorage.removeItem(META_OAUTH_STORAGE.nonce);
-  sessionStorage.removeItem(META_OAUTH_STORAGE.contaId);
-  sessionStorage.removeItem(META_OAUTH_STORAGE.returnTo);
+  localStorage.removeItem(META_OAUTH_STORAGE.nonce);
+  localStorage.removeItem(META_OAUTH_STORAGE.contaId);
+  localStorage.removeItem(META_OAUTH_STORAGE.returnTo);
 }
 
-export function readMetaOAuthSession() {
+export function readMetaOAuthSession(stateParam?: string | null) {
+  const fromState = stateParam ? decodeMetaOAuthState(stateParam) : null;
+  if (fromState) {
+    return {
+      nonce: fromState.n,
+      contaId: fromState.c,
+      returnTo: fromState.r,
+    };
+  }
+
   return {
-    nonce: sessionStorage.getItem(META_OAUTH_STORAGE.nonce),
-    contaId: sessionStorage.getItem(META_OAUTH_STORAGE.contaId),
-    returnTo: sessionStorage.getItem(META_OAUTH_STORAGE.returnTo),
+    nonce: localStorage.getItem(META_OAUTH_STORAGE.nonce),
+    contaId: localStorage.getItem(META_OAUTH_STORAGE.contaId),
+    returnTo: localStorage.getItem(META_OAUTH_STORAGE.returnTo),
   };
 }
 
@@ -63,16 +102,14 @@ export function buildMetaOAuthUrl(contaId: string, returnTo: string): string {
   const redirectUri = getMetaOAuthRedirectUri();
   const configId = getMetaLoginConfigId();
   const nonce = crypto.randomUUID();
-
-  sessionStorage.setItem(META_OAUTH_STORAGE.nonce, nonce);
-  sessionStorage.setItem(META_OAUTH_STORAGE.contaId, contaId);
-  sessionStorage.setItem(META_OAUTH_STORAGE.returnTo, returnTo);
+  const oauthState = encodeMetaOAuthState({ n: nonce, c: contaId, r: returnTo });
+  writeMetaOAuthStorage({ n: nonce, c: contaId, r: returnTo });
 
   const params = new URLSearchParams({
     client_id: appId,
     redirect_uri: redirectUri,
     response_type: "code",
-    state: nonce,
+    state: oauthState,
   });
 
   if (configId) {

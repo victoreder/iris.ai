@@ -20,7 +20,8 @@ export function MetaOAuthCallbackPage() {
     handled.current = true;
 
     const oauthError = searchParams.get("error_description") || searchParams.get("error");
-    const { nonce, contaId, returnTo } = readMetaOAuthSession();
+    const state = searchParams.get("state");
+    const { nonce, contaId, returnTo } = readMetaOAuthSession(state);
     const fallback = returnTo || "/app";
 
     const closePopup = (status: "success" | "error" | "cancelled", error?: string) => {
@@ -44,9 +45,8 @@ export function MetaOAuthCallbackPage() {
     }
 
     const code = searchParams.get("code");
-    const state = searchParams.get("state");
 
-    if (!code || !state || state !== nonce || !contaId) {
+    if (!code || !state || !nonce || !contaId) {
       closePopup("error", "Sessão OAuth inválida ou expirada. Tente conectar novamente.");
       return;
     }
