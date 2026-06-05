@@ -112,11 +112,20 @@ export function buildMetaOAuthUrl(contaId: string, returnTo: string): string {
   return `https://www.facebook.com/${META_OAUTH_VERSION}/dialog/oauth?${params.toString()}`;
 }
 
-/** Abre login Meta em nova guia; se bloqueado, redireciona a aba atual. */
-export function startMetaOAuthNewTab(contaId: string, returnTo: string): void {
+/** Abre login Meta somente em nova guia; a aba atual permanece no Viziom. */
+export function startMetaOAuthNewTab(contaId: string, returnTo: string): boolean {
   const url = buildMetaOAuthUrl(contaId, returnTo);
-  const opened = window.open(url, "_blank", "noopener,noreferrer");
-  if (!opened) {
-    window.location.assign(url);
+  const tab = window.open("about:blank", "_blank");
+
+  if (!tab) return false;
+
+  try {
+    tab.opener = null;
+    tab.location.replace(url);
+    tab.focus();
+    return true;
+  } catch {
+    tab.close();
+    return false;
   }
 }

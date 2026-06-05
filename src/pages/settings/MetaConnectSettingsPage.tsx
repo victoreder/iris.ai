@@ -38,8 +38,12 @@ export function MetaConnectSettingsPage() {
     }
 
     try {
-      startMetaOAuthNewTab(contaAtiva.id, `${routes.configuracoes}/conectar-meta`);
-      toast.message("Abra a nova guia do Facebook para autorizar o Viziom.");
+      const abriu = startMetaOAuthNewTab(contaAtiva.id, `${routes.configuracoes}/conectar-meta`);
+      if (abriu) {
+        toast.message("Autorize o Viziom na nova guia do Facebook.");
+      } else {
+        toast.error("Não foi possível abrir nova guia. Permita popups para este site e tente novamente.");
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao iniciar login Meta.");
     }

@@ -11,6 +11,8 @@ import { AppAccessGuard, AppLayoutGuard } from "@/components/AppAccessGuard";
 import { EnvSetupScreen } from "@/components/EnvSetupScreen";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { LoginPage } from "@/pages/auth/LoginPage";
+import { ForgotPasswordPage } from "@/pages/auth/ForgotPasswordPage";
+import { ResetPasswordPage } from "@/pages/auth/ResetPasswordPage";
 import { InviteAcceptPage } from "@/pages/auth/InviteAcceptPage";
 import { MetaOAuthCallbackPage } from "@/pages/auth/MetaOAuthCallbackPage";
 import { SignUpPage } from "@/pages/auth/SignUpPage";
@@ -86,6 +88,8 @@ export default function App() {
               <Route path="/politica-de-privacidade" element={<PoliticaPrivacidadePage />} />
             </Route>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/auth/esqueci-senha" element={<ForgotPasswordPage />} />
+            <Route path="/auth/redefinir-senha" element={<ResetPasswordPage />} />
             <Route path="/auth/convite" element={<InviteAcceptPage />} />
             <Route
               path="/auth/meta/callback"

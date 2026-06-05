@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Link, Navigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
+import { AuthShell } from "@/components/auth/AuthShell";
 import { useAuth } from "@/contexts/AuthContext";
 import { resolvePostLoginPath } from "@/lib/authRedirect";
 import { isInviteFlowPending } from "@/lib/authInvite";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
 
 export function LoginPage() {
@@ -43,60 +43,48 @@ export function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-xl font-bold text-white">
-            V
+    <AuthShell
+      title="Bem-vindo de volta"
+      description="Entre com seu e-mail e senha para acessar o Viziom."
+    >
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="space-y-2">
+          <Label htmlFor="email">E-mail</Label>
+          <Input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoComplete="email"
+            autoFocus
+            placeholder="seu@email.com"
+          />
+        </div>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <Label htmlFor="password">Senha</Label>
+            <Link
+              to="/auth/esqueci-senha"
+              className="text-xs font-medium text-primary hover:underline"
+            >
+              Esqueci minha senha
+            </Link>
           </div>
-          <CardTitle>Entrar no Viziom</CardTitle>
-          <CardDescription>Rastreio de leads no WhatsApp</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">E-mail</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={submitting}>
-              {submitting ? "Entrando…" : "Entrar"}
-            </Button>
-          </form>
-          <p className="mt-4 text-center text-sm text-muted-foreground">
-            Acesso provisionado pelo administrador.{" "}
-            <Link to="/signup" className="font-medium text-primary hover:underline">
-              Saiba mais
-            </Link>
-          </p>
-          <p className="mt-3 text-center text-xs text-muted-foreground">
-            <Link to="/termos-de-uso" className="hover:text-foreground hover:underline">
-              Termos de uso
-            </Link>
-            {" · "}
-            <Link to="/politica-de-privacidade" className="hover:text-foreground hover:underline">
-              Política de privacidade
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
-    </div>
+          <Input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            autoComplete="current-password"
+            placeholder="••••••••"
+          />
+        </div>
+        <Button type="submit" className="w-full" disabled={submitting}>
+          {submitting ? "Entrando…" : "Entrar"}
+        </Button>
+      </form>
+    </AuthShell>
   );
 }

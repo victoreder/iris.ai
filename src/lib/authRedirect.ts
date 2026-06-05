@@ -2,7 +2,13 @@ export const AUTH_REDIRECT_PARAM = "redirect";
 
 const DEFAULT_POST_LOGIN_PATH = "/app";
 
-const BLOCKED_REDIRECT_PREFIXES = ["/login", "/signup", "/auth/convite"];
+const BLOCKED_REDIRECT_PREFIXES = [
+  "/login",
+  "/signup",
+  "/auth/convite",
+  "/auth/esqueci-senha",
+  "/auth/redefinir-senha",
+];
 
 /** Aceita apenas caminhos internos para evitar open redirect. */
 export function sanitizeRedirectPath(path: string | null | undefined): string | null {
