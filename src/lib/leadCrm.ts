@@ -1,6 +1,7 @@
-import { format, isBefore, startOfDay } from "date-fns";
+import { addDays, endOfDay, format, isBefore, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/lib/supabase";
+import { LEAD_DETAIL_SELECT } from "@/lib/leadsConstants";
 import type { LeadsClique } from "@/types/database";
 import type { Usuario } from "@/types/usuario";
 
@@ -114,4 +115,102 @@ export function attachLeadResponsavel(
   byId: Map<string, LeadResponsavel>
 ): LeadsClique {
   return attachLeadResponsaveis([lead], byId)[0];
+}
+
+export type CrmAgendaKind = "follow_up" | "reuniao";
+export type CrmAgendaBucket = "atrasado" | "hoje" | "proximos";
+
+export interface CrmAgendaItem {
+  id: string;
+  kind: CrmAgendaKind;
+  at: string;
+  observacao: string | null;
+  followUpId?: string;
+  lead: LeadsClique;
+}
+
+export interface CrmAgendaGroup {
+  key: CrmAgendaBucket;
+  title: string;
+  items: CrmAgendaItem[];
+}
+
+export async function loadCrmAgenda(contaId: string, horizonDays = 7): Promise<CrmAgendaItem[]> {
+  const until = endOfDay(addDays(new Date(), horizonDays)).toISOString();
+  const todayStart = startOfDay(new Date()).toISOString();
+
+  const [followRes, reuniaoRes, responsaveis] = await Promise.all([
+    supabase
+      .from("leads_cliques_follow_ups")
+      .select(`id, data_follow_up, observacao, clique_id, leads_cliques(${LEAD_DETAIL_SELECT})`)
+      .eq("conta_id", contaId)
+      .eq("concluido", false)
+      .lte("data_follow_up", until)
+      .order("data_follow_up", { ascending: true })
+      .limit(200),
+    supabase
+      .from("leads_cliques")
+      .select(LEAD_DETAIL_SELECT)
+      .eq("conta_id", contaId)
+      .not("data_reuniao", "is", null)
+      .gte("data_reuniao", todayStart)
+      .lte("data_reuniao", until)
+      .order("data_reuniao", { ascending: true })
+      .limit(200),
+    loadContaResponsaveis(contaId),
+  ]);
+
+  const items: CrmAgendaItem[] = [];
+
+  for (const row of followRes.data ?? []) {
+    const raw = row as {
+      id: string;
+      data_follow_up: string;
+      observacao: string | null;
+      leads_cliques: LeadsClique | LeadsClique[] | null;
+    };
+    const leadRaw = Array.isArray(raw.leads_cliques) ? raw.leads_cliques[0] : raw.leads_cliques;
+    if (!leadRaw) continue;
+    items.push({
+      id: `follow-${raw.id}`,
+      kind: "follow_up",
+      at: raw.data_follow_up,
+      observacao: raw.observacao,
+      followUpId: raw.id,
+      lead: attachLeadResponsavel(leadRaw, responsaveis),
+    });
+  }
+
+  for (const leadRaw of (reuniaoRes.data as LeadsClique[]) ?? []) {
+    if (!leadRaw.data_reuniao) continue;
+    items.push({
+      id: `reuniao-${leadRaw.id}`,
+      kind: "reuniao",
+      at: leadRaw.data_reuniao,
+      observacao: leadRaw.observacao,
+      lead: attachLeadResponsavel(leadRaw, responsaveis),
+    });
+  }
+
+  return items.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
+}
+
+export function groupCrmAgenda(items: CrmAgendaItem[], now = new Date()): CrmAgendaGroup[] {
+  const today = startOfDay(now).getTime();
+  const atrasado: CrmAgendaItem[] = [];
+  const hoje: CrmAgendaItem[] = [];
+  const proximos: CrmAgendaItem[] = [];
+
+  for (const item of items) {
+    const day = startOfDay(new Date(item.at)).getTime();
+    if (day < today) atrasado.push(item);
+    else if (day === today) hoje.push(item);
+    else proximos.push(item);
+  }
+
+  return [
+    { key: "atrasado", title: "Atrasados", items: atrasado },
+    { key: "hoje", title: "Hoje", items: hoje },
+    { key: "proximos", title: "Próximos 7 dias", items: proximos },
+  ];
 }

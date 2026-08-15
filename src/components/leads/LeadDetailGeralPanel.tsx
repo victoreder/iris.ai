@@ -4,7 +4,6 @@ import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useConta } from "@/contexts/ContaContext";
-import { LeadCrmSection } from "@/components/leads/LeadCrmSection";
 import { LeadDetailOriginsSection } from "@/components/leads/LeadDetailOriginsSection";
 import { LeadOriginBadge } from "@/components/leads/MetaOriginBadge";
 import {
@@ -20,8 +19,6 @@ interface Props {
   lead: LeadsClique;
   origens: LeadsCliqueOrigem[];
   loadingOrigens?: boolean;
-  canWrite?: boolean;
-  onCrmSaved?: () => Promise<void> | void;
 }
 
 function InfoCard({ label, children }: { label: string; children: React.ReactNode }) {
@@ -71,13 +68,7 @@ function UtmRow({ field, value, contaRef }: { field: LeadsUtmField; value: strin
   );
 }
 
-export function LeadDetailGeralPanel({
-  lead,
-  origens,
-  loadingOrigens,
-  canWrite = false,
-  onCrmSaved,
-}: Props) {
+export function LeadDetailGeralPanel({ lead, origens, loadingOrigens }: Props) {
   const { contaAtiva } = useConta();
   const [rastreioAberto, setRastreioAberto] = useState(false);
   const contaRef = contaAtiva ? contaUrlRef(contaAtiva) : "";
@@ -85,8 +76,6 @@ export function LeadDetailGeralPanel({
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6">
-      <LeadCrmSection lead={lead} canWrite={canWrite} onSaved={onCrmSaved} />
-
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <InfoCard label="Telefone">
           <p className="text-lg font-semibold">{formatPhoneBR(lead.telefone_lead)}</p>

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, MessageCircle, Route, UserRound } from "lucide-react";
+import { ArrowLeft, MessageCircle, Route, StickyNote, UserRound } from "lucide-react";
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { LeadConversaChat } from "@/components/leads/LeadConversaChat";
+import { LeadCrmSection } from "@/components/leads/LeadCrmSection";
 import { LeadDetailGeralPanel } from "@/components/leads/LeadDetailGeralPanel";
 import { LeadDetailJornadaPanel } from "@/components/leads/LeadDetailJornadaPanel";
 import { resolveLeadOrigens } from "@/lib/leadOrigens";
@@ -38,6 +39,7 @@ const TAB_ICONS: Record<LeadDetailTab, typeof UserRound> = {
   geral: UserRound,
   jornada: Route,
   conversa: MessageCircle,
+  crm: StickyNote,
 };
 
 export function LeadDetailPage() {
@@ -278,13 +280,7 @@ export function LeadDetailPage() {
       <div className="lead-panel-bg flex min-h-0 flex-1 flex-col overflow-hidden">
         {tab === "geral" && (
           <div className="flex-1 overflow-y-auto">
-            <LeadDetailGeralPanel
-              lead={lead}
-              origens={origens}
-              loadingOrigens={loadingOrigens}
-              canWrite={canWrite}
-              onCrmSaved={() => loadLead({ silent: true })}
-            />
+            <LeadDetailGeralPanel lead={lead} origens={origens} loadingOrigens={loadingOrigens} />
           </div>
         )}
 
@@ -314,6 +310,14 @@ export function LeadDetailPage() {
             loading={loadingMensagens}
             active={tab === "conversa"}
           />
+        )}
+
+        {tab === "crm" && (
+          <div className="flex-1 overflow-y-auto">
+            <div className="mx-auto max-w-4xl p-4 sm:p-6">
+              <LeadCrmSection lead={lead} canWrite={canWrite} onSaved={() => loadLead({ silent: true })} />
+            </div>
+          </div>
         )}
       </div>
     </div>

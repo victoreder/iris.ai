@@ -137,6 +137,17 @@ export interface LeadsClique {
   responsavel?: Pick<import("./usuario").Usuario, "id" | "nome" | "email" | "foto_url"> | null;
 }
 
+export interface LeadsCliqueFollowUp {
+  id: string;
+  conta_id: string;
+  clique_id: string;
+  data_follow_up: string;
+  observacao: string | null;
+  concluido: boolean;
+  concluido_at: string | null;
+  created_at: string;
+}
+
 export type LeadsCliqueEventoTipo =
   | "lead_novo"
   | "etapa_alterada"

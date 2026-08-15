@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  CalendarClock,
   ChevronDown,
   ChevronUp,
   Download,
@@ -19,6 +20,7 @@ import { LeadsInboxTable } from "@/components/leads/LeadsInboxTable";
 import { LeadsOriginMetricsCards } from "@/components/leads/LeadsOriginMetricsCards";
 import { LeadsWhatsappFilter } from "@/components/leads/LeadsWhatsappFilter";
 import { LeadsKanbanBoard } from "@/components/leads/LeadsKanbanBoard";
+import { LeadsAgendaPanel } from "@/components/leads/LeadsAgendaPanel";
 import { InboxLegacyLeadRedirect } from "@/pages/app/LeadDetailPage";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,7 +34,7 @@ import { contaUrlRef } from "@/lib/appNavigation";
 import { leadDetailPath, type LeadDetailTab } from "@/lib/leadDetailTabs";
 import { LEAD_DETAIL_SELECT } from "@/lib/leadsConstants";
 import { groupLeadsByKanbanColumn } from "@/lib/leadsKanban";
-import { aggregateLeadCrmMetrics, attachLeadResponsaveis, loadContaResponsaveis } from "@/lib/leadCrm";
+import { aggregateLeadCrmMetrics, attachLeadResponsaveis, loadContaResponsaveis, loadCrmAgenda, type CrmAgendaItem } from "@/lib/leadCrm";
 import { getCanonicalConvertedLeads } from "@/lib/leadPhone";
 import {
   countActiveLeadsUtmFilters,
@@ -96,8 +98,9 @@ export function InboxPage() {
   const [cliques, setCliques] = useState<LeadsClique[]>([]);
   const [links, setLinks] = useState<LeadsLink[]>([]);
   const [etapas, setEtapas] = useState<LeadsJornadaEtapa[]>([]);
+  const [agendaItems, setAgendaItems] = useState<CrmAgendaItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<"lista" | "colunas">("lista");
+  const [view, setView] = useState<"lista" | "colunas" | "acoes">("lista");
   const [period, setPeriod] = useState<LeadsPeriod>("ultimos_30");
   const [instanciaFilter, setInstanciaFilter] = useState("all");
   const [linkFilter, setLinkFilter] = useState("all");
@@ -150,7 +153,7 @@ export function InboxPage() {
   const load = useCallback(async () => {
     if (!contaAtiva) return;
     setLoading(true);
-    const [cRes, lRes, eRes, responsaveis] = await Promise.all([
+    const [cRes, lRes, eRes, responsaveis, agenda] = await Promise.all([
       supabase
         .from("leads_cliques")
         .select(LEAD_DETAIL_SELECT)
@@ -161,10 +164,12 @@ export function InboxPage() {
       supabase.from("leads_links").select("id, nome, slug, instancia_id").eq("conta_id", contaAtiva.id),
       supabase.from("leads_jornada_etapas").select("*").eq("conta_id", contaAtiva.id).order("posicao"),
       loadContaResponsaveis(contaAtiva.id),
+      loadCrmAgenda(contaAtiva.id),
     ]);
     setCliques(attachLeadResponsaveis((cRes.data as LeadsClique[]) ?? [], responsaveis));
     setLinks((lRes.data as LeadsLink[]) ?? []);
     setEtapas((eRes.data as LeadsJornadaEtapa[]) ?? []);
+    setAgendaItems(agenda);
     setLoading(false);
   }, [contaAtiva?.id]);
 
@@ -225,6 +230,17 @@ export function InboxPage() {
   const kanbanCrmMetrics = useMemo(
     () => aggregateLeadCrmMetrics(kanbanColumns.flatMap((col) => col.leads)),
     [kanbanColumns]
+  );
+
+  const agendaFiltered = useMemo(
+    () =>
+      agendaItems.filter(
+        (item) =>
+          matchesPhoneFilter(item.lead, telefoneFilter) &&
+          matchesStructuralFilters(item.lead, instanciaFilter, linkFilter) &&
+          matchesLeadsUtmFilters(item.lead, utmFilters)
+      ),
+    [agendaItems, telefoneFilter, instanciaFilter, linkFilter, utmFilters]
   );
 
   const activeFiltersCount = useMemo(() => {
@@ -400,6 +416,14 @@ export function InboxPage() {
               >
                 <LayoutGrid className="h-4 w-4" /> Colunas
               </Button>
+              <Button
+                variant={view === "acoes" ? "default" : "ghost"}
+                size="sm"
+                className="rounded-md"
+                onClick={() => setView("acoes")}
+              >
+                <CalendarClock className="h-4 w-4" /> Ações
+              </Button>
             </div>
           </div>
         </div>
@@ -491,6 +515,13 @@ export function InboxPage() {
             onLeadClick={openLeadDetail}
           />
         </div>
+      ) : view === "acoes" ? (
+        <LeadsAgendaPanel
+          items={agendaFiltered}
+          canWrite={canWrite}
+          onOpenLead={(lead) => openLeadDetail(lead, "crm")}
+          onFollowUpDone={() => void load()}
+        />
       ) : (
         <div className="space-y-3">
           {kanbanInstancia && (
@@ -534,7 +565,7 @@ export function InboxPage() {
           {kanbanInstanciaId ? (
             <LeadsKanbanBoard
               columns={kanbanColumns}
-              onLeadClick={(lead) => openLeadDetail(lead)}
+              onLeadClick={(lead) => openLeadDetail(lead, "crm")}
               onDragEnd={handleDragEnd}
               canDrag={canWrite}
             />

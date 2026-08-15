@@ -1,13 +1,14 @@
-export type LeadDetailTab = "geral" | "jornada" | "conversa";
+export type LeadDetailTab = "geral" | "jornada" | "conversa" | "crm";
 
 export const LEAD_DETAIL_TABS: { key: LeadDetailTab; label: string }[] = [
   { key: "geral", label: "Geral" },
   { key: "jornada", label: "Jornada" },
   { key: "conversa", label: "Conversa" },
+  { key: "crm", label: "CRM" },
 ];
 
 export function parseLeadDetailTab(value: string | null): LeadDetailTab {
-  if (value === "jornada" || value === "conversa") return value;
+  if (value === "jornada" || value === "conversa" || value === "crm") return value;
   return "geral";
 }
 

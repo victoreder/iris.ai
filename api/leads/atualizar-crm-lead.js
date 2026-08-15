@@ -40,20 +40,16 @@ export default async function handler(req, res) {
   if (!auth) return;
 
   try {
-    const { cliqueId, observacao, dataFollowUp, dataReuniao, responsavelId } = req.body || {};
+    const { cliqueId, observacao, dataReuniao, responsavelId } = req.body || {};
     const id = String(cliqueId ?? "").trim();
     if (!id) {
       return res.status(400).json({ error: "cliqueId é obrigatório." });
     }
 
     const observacaoParsed = parseOptionalText(observacao);
-    const followUpParsed = parseOptionalIso(dataFollowUp);
     const reuniaoParsed = parseOptionalIso(dataReuniao);
     const responsavelParsed = parseOptionalUuid(responsavelId);
 
-    if (followUpParsed === undefined) {
-      return res.status(400).json({ error: "Data de follow-up inválida." });
-    }
     if (reuniaoParsed === undefined) {
       return res.status(400).json({ error: "Data de reunião inválida." });
     }
@@ -91,7 +87,6 @@ export default async function handler(req, res) {
       .from("leads_cliques")
       .update({
         observacao: observacaoParsed,
-        data_follow_up: followUpParsed,
         data_reuniao: reuniaoParsed,
         responsavel_id: responsavelParsed,
       })
@@ -105,7 +100,6 @@ export default async function handler(req, res) {
     return res.status(200).json({
       success: true,
       observacao: observacaoParsed,
-      data_follow_up: followUpParsed,
       data_reuniao: reuniaoParsed,
       responsavel_id: responsavelParsed,
     });
