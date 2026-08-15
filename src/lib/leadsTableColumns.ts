@@ -10,6 +10,10 @@ export type LeadsTableColumnKey =
   | "campanha"
   | "origem"
   | "entrada"
+  | "follow_up"
+  | "reuniao"
+  | "responsavel"
+  | "observacao"
   | "dispositivo"
   | "valor_venda"
   | "utm_source"
@@ -31,6 +35,10 @@ export const LEADS_TABLE_COLUMN_ORDER: LeadsTableColumnKey[] = [
   "campanha",
   "origem",
   "entrada",
+  "follow_up",
+  "reuniao",
+  "responsavel",
+  "observacao",
   "dispositivo",
   "valor_venda",
   "utm_source",
@@ -61,6 +69,10 @@ export const LEADS_TABLE_COLUMN_LABELS: Record<LeadsTableColumnKey, string> = {
   campanha: "Link rastreável",
   origem: "Origem",
   entrada: "Entrada como lead",
+  follow_up: "Follow-up",
+  reuniao: "Reunião",
+  responsavel: "Responsável",
+  observacao: "Observação",
   dispositivo: "Dispositivo",
   valor_venda: "Valor da venda",
   utm_source: "UTM Source",
@@ -80,7 +92,19 @@ export const LEADS_TABLE_COLUMN_LABELS: Record<LeadsTableColumnKey, string> = {
 export const LEADS_TABLE_COLUMN_GROUPS: { title: string; keys: LeadsTableColumnKey[] }[] = [
   {
     title: "Informações",
-    keys: ["contato", "etapa", "campanha", "origem", "entrada", "dispositivo", "valor_venda"],
+    keys: [
+      "contato",
+      "etapa",
+      "campanha",
+      "origem",
+      "entrada",
+      "follow_up",
+      "reuniao",
+      "responsavel",
+      "observacao",
+      "dispositivo",
+      "valor_venda",
+    ],
   },
   {
     title: "UTMs",

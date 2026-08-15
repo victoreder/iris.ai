@@ -127,9 +127,14 @@ export interface LeadsClique {
   etapa_atualizada_at: string | null;
   valor_venda: number | null;
   clique_principal_id: string | null;
+  observacao: string | null;
+  data_follow_up: string | null;
+  data_reuniao: string | null;
+  responsavel_id: string | null;
   created_at: string;
   leads_links?: Pick<LeadsLink, "id" | "nome" | "slug" | "instancia_id"> | null;
   leads_jornada_etapas?: Pick<LeadsJornadaEtapa, "id" | "nome" | "representa_venda" | "valor_venda"> | null;
+  responsavel?: Pick<import("./usuario").Usuario, "id" | "nome" | "email" | "foto_url"> | null;
 }
 
 export type LeadsCliqueEventoTipo =

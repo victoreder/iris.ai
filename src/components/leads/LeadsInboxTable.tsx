@@ -81,6 +81,22 @@ function LeadsTableCell({
       return lead.convertido_at
         ? format(new Date(lead.convertido_at), "dd/MM/yyyy HH:mm", { locale: ptBR })
         : "—";
+    case "follow_up":
+      return lead.data_follow_up
+        ? format(new Date(lead.data_follow_up), "dd/MM/yyyy HH:mm", { locale: ptBR })
+        : "—";
+    case "reuniao":
+      return lead.data_reuniao
+        ? format(new Date(lead.data_reuniao), "dd/MM/yyyy HH:mm", { locale: ptBR })
+        : "—";
+    case "responsavel":
+      return lead.responsavel?.nome?.trim() || lead.responsavel?.email || "—";
+    case "observacao":
+      return (
+        <span className="block max-w-[220px] truncate" title={lead.observacao ?? undefined}>
+          {cellText(lead.observacao)}
+        </span>
+      );
     case "dispositivo": {
       const parts = [lead.device_type, lead.browser, lead.os].filter(Boolean);
       return parts.length > 0 ? parts.join(" · ") : "—";
@@ -175,6 +191,9 @@ export function LeadsInboxTable({
                       key={column}
                       className={
                         column === "entrada" ||
+                        column === "follow_up" ||
+                        column === "reuniao" ||
+                        column === "observacao" ||
                         column.startsWith("utm_") ||
                         column === "fbclid" ||
                         column === "gclid" ||

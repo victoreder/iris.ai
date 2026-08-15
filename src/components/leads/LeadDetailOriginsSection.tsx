@@ -17,17 +17,21 @@ interface Props {
 
 function UtmLine({ field, value }: { field: LeadsUtmField; value: string | null }) {
   const label = LEADS_UTM_LABELS[field];
+  const display = value?.trim() || "—";
+
   return (
-    <span className="text-muted-foreground">
-      {label}: <span className="text-foreground">{value?.trim() || "—"}</span>
+    <span className="min-w-0 truncate text-muted-foreground" title={value?.trim() || undefined}>
+      {label}: <span className="text-foreground">{display}</span>
     </span>
   );
 }
 
 function TrackingLine({ label, value }: { label: string; value: string | null }) {
+  const display = value?.trim() || "—";
+
   return (
-    <span className="text-muted-foreground">
-      {label}: <span className="text-foreground">{value?.trim() || "—"}</span>
+    <span className="min-w-0 truncate text-muted-foreground" title={value?.trim() || undefined}>
+      {label}: <span className="text-foreground">{display}</span>
     </span>
   );
 }
@@ -95,12 +99,12 @@ export function LeadDetailOriginsSection({ lead, origens }: Props) {
             {(origem.referrer || origem.landing_url) && (
               <div className="mt-3 space-y-1 text-sm text-muted-foreground">
                 {origem.referrer && (
-                  <p className="truncate">
+                  <p className="truncate" title={origem.referrer}>
                     Referrer: <span className="text-foreground">{origem.referrer}</span>
                   </p>
                 )}
                 {origem.landing_url && (
-                  <p className="truncate">
+                  <p className="truncate" title={origem.landing_url}>
                     Landing: <span className="text-foreground">{origem.landing_url}</span>
                   </p>
                 )}

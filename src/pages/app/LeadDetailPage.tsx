@@ -64,9 +64,9 @@ export function LeadDetailPage() {
   const phoneTitle = lead ? formatPhoneBR(lead.telefone_lead) : "Lead";
   useDocumentTitle(phoneTitle);
 
-  const loadLead = useCallback(async () => {
+  const loadLead = useCallback(async (opts?: { silent?: boolean }) => {
     if (!contaAtiva || !leadId) return;
-    setLoading(true);
+    if (!opts?.silent) setLoading(true);
     const { data, error } = await supabase
       .from("leads_cliques")
       .select(LEAD_DETAIL_SELECT)
@@ -75,14 +75,16 @@ export function LeadDetailPage() {
       .maybeSingle();
 
     if (error || !data) {
-      setLead(null);
-      setLoading(false);
+      if (!opts?.silent) {
+        setLead(null);
+        setLoading(false);
+      }
       return;
     }
 
     setLead(data as LeadsClique);
     setEtapaId((data as LeadsClique).etapa_id ?? "");
-    setLoading(false);
+    if (!opts?.silent) setLoading(false);
   }, [contaAtiva?.id, leadId]);
 
   const loadEtapas = useCallback(async () => {
@@ -273,7 +275,13 @@ export function LeadDetailPage() {
       <div className="lead-panel-bg flex min-h-0 flex-1 flex-col overflow-hidden">
         {tab === "geral" && (
           <div className="flex-1 overflow-y-auto">
-            <LeadDetailGeralPanel lead={lead} origens={origens} loadingOrigens={loadingOrigens} />
+            <LeadDetailGeralPanel
+              lead={lead}
+              origens={origens}
+              loadingOrigens={loadingOrigens}
+              canWrite={canWrite}
+              onCrmSaved={() => loadLead({ silent: true })}
+            />
           </div>
         )}
 

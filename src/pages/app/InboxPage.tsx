@@ -32,6 +32,7 @@ import { contaUrlRef } from "@/lib/appNavigation";
 import { leadDetailPath, type LeadDetailTab } from "@/lib/leadDetailTabs";
 import { LEAD_DETAIL_SELECT } from "@/lib/leadsConstants";
 import { groupLeadsByKanbanColumn } from "@/lib/leadsKanban";
+import { aggregateLeadCrmMetrics } from "@/lib/leadCrm";
 import { getCanonicalConvertedLeads } from "@/lib/leadPhone";
 import {
   countActiveLeadsUtmFilters,
@@ -220,6 +221,11 @@ export function InboxPage() {
     return groupLeadsByKanbanColumn(kanbanLeads, etapas, kanbanInstanciaId);
   }, [cliques, etapas, kanbanInstanciaId, dateRange, telefoneFilter]);
 
+  const kanbanCrmMetrics = useMemo(
+    () => aggregateLeadCrmMetrics(kanbanColumns.flatMap((col) => col.leads)),
+    [kanbanColumns]
+  );
+
   const activeFiltersCount = useMemo(() => {
     let n = 0;
     if (instanciaFilter !== "all") n += 1;
@@ -283,12 +289,34 @@ export function InboxPage() {
 
   const handleDragEnd = async (leadId: string, etapaId: string) => {
     if (!contaAtiva || !canWrite) return;
+    const current = cliques.find((c) => c.id === leadId);
+    if (current?.etapa_id === etapaId) return;
+    const etapa = etapas.find((e) => e.id === etapaId);
+    setCliques((prev) =>
+      prev.map((c) =>
+        c.id === leadId
+          ? {
+              ...c,
+              etapa_id: etapaId,
+              etapa_atualizada_at: new Date().toISOString(),
+              leads_jornada_etapas: etapa
+                ? {
+                    id: etapa.id,
+                    nome: etapa.nome,
+                    representa_venda: etapa.representa_venda,
+                    valor_venda: etapa.valor_venda,
+                  }
+                : c.leads_jornada_etapas,
+            }
+          : c
+      )
+    );
     try {
       await apiPost("/api/leads/atualizar-etapa-lead", { cliqueId: leadId, etapaId }, contaAtiva.id);
       toast.success("Etapa atualizada.");
-      void load();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao mover lead.");
+      void load();
     }
   };
 
@@ -476,6 +504,30 @@ export function InboxPage() {
                   Trocar WhatsApp
                 </Button>
               )}
+            </div>
+          )}
+          {kanbanCrmMetrics.total > 0 && (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="rounded-lg border border-border bg-card px-3 py-2">
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Leads no funil</p>
+                <p className="mt-0.5 text-lg font-semibold tabular-nums">{kanbanCrmMetrics.total}</p>
+              </div>
+              <div className="rounded-lg border border-border bg-card px-3 py-2">
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Follow-up atrasado</p>
+                <p className="mt-0.5 text-lg font-semibold tabular-nums text-destructive">
+                  {kanbanCrmMetrics.followUpAtrasado}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border bg-card px-3 py-2">
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Reuniões hoje</p>
+                <p className="mt-0.5 text-lg font-semibold tabular-nums text-warning">
+                  {kanbanCrmMetrics.reuniaoHoje}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border bg-card px-3 py-2">
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Sem responsável</p>
+                <p className="mt-0.5 text-lg font-semibold tabular-nums">{kanbanCrmMetrics.semResponsavel}</p>
+              </div>
             </div>
           )}
           {kanbanInstanciaId ? (

@@ -4,6 +4,28 @@ import { logLeadEvento } from "./leadEventos.js";
 const CLIQUE_SELECT =
   "*, leads_links(id, slug, nome, mensagem_inicial, instancia_id)";
 
+function hasText(value) {
+  return Boolean(String(value ?? "").trim());
+}
+
+/** Origem adicional: só link rastreável ou dados de atribuição. A 1ª origem do cadastro não usa isto. */
+export function cliqueTemRastreio(clique) {
+  if (!clique) return false;
+  if (clique.link_id) return true;
+  return (
+    hasText(clique.utm_source) ||
+    hasText(clique.utm_medium) ||
+    hasText(clique.utm_campaign) ||
+    hasText(clique.utm_content) ||
+    hasText(clique.utm_term) ||
+    hasText(clique.fbclid) ||
+    hasText(clique.gclid) ||
+    hasText(clique.ttclid) ||
+    hasText(clique.fbp) ||
+    hasText(clique.fbc)
+  );
+}
+
 function origemSnapshotFromClique(clique) {
   const link = clique.leads_links ?? null;
   return {
@@ -147,6 +169,7 @@ export async function recordOrigemAdicionalEvento(supabase, { contaId, cliqueId,
 
 /**
  * Se o telefone já pertence a um lead convertido, mescla o clique aguardando e retorna o principal.
+ * Origem extra só se o clique tiver link rastreável ou atribuição — mensagem solta não gera origem.
  */
 export async function resolveEffectiveLead(supabase, { clique, trackingId, telefone }) {
   if (!clique || !trackingId || !telefone?.trim()) {
@@ -167,13 +190,17 @@ export async function resolveEffectiveLead(supabase, { clique, trackingId, telef
     return { clique, trackingId, merged: false, principalId: trackingId };
   }
 
-  const ordem = await getNextOrigemOrdem(supabase, principal.id);
-  await recordLeadOrigem(supabase, {
-    contaId: clique.conta_id,
-    cliqueId: principal.id,
-    sourceClique: clique,
-    ordem,
-  });
+  const temRastreio = cliqueTemRastreio(clique);
+  const ordem = temRastreio ? await getNextOrigemOrdem(supabase, principal.id) : null;
+
+  if (temRastreio) {
+    await recordLeadOrigem(supabase, {
+      contaId: clique.conta_id,
+      cliqueId: principal.id,
+      sourceClique: clique,
+      ordem,
+    });
+  }
 
   await mergeAguardandoIntoPrincipal(supabase, {
     secondaryId: trackingId,
@@ -181,16 +208,18 @@ export async function resolveEffectiveLead(supabase, { clique, trackingId, telef
     telefone,
   });
 
-  await recordOrigemAdicionalEvento(supabase, {
-    contaId: clique.conta_id,
-    cliqueId: principal.id,
-    ordem,
-    campanhaNome: clique.leads_links?.nome ?? null,
-    detalhes: {
-      origem_clique_id: trackingId,
-      matchMethod: "telefone_duplicado",
-    },
-  });
+  if (temRastreio) {
+    await recordOrigemAdicionalEvento(supabase, {
+      contaId: clique.conta_id,
+      cliqueId: principal.id,
+      ordem,
+      campanhaNome: clique.leads_links?.nome ?? null,
+      detalhes: {
+        origem_clique_id: trackingId,
+        matchMethod: "telefone_duplicado",
+      },
+    });
+  }
 
   const refreshed = await fetchCliqueWithLinks(supabase, principal.id);
 
@@ -203,6 +232,7 @@ export async function resolveEffectiveLead(supabase, { clique, trackingId, telef
   };
 }
 
+/** 1ª origem no cadastro do lead — inclusive mensagem sem link e sem atribuição. */
 export async function ensureFirstOrigem(supabase, { clique }) {
   if (!clique?.conta_id || !clique?.id) return;
 
