@@ -15,6 +15,7 @@ import type { Usuario } from "@/types/usuario";
 interface UsuarioContextValue {
   usuario: Usuario | null;
   loading: boolean;
+  loadError: string | null;
   refreshUsuario: () => Promise<void>;
   isSuperadmin: boolean;
   isProvisioned: boolean;
@@ -27,6 +28,7 @@ export function UsuarioProvider({ children }: { children: ReactNode }) {
   const userId = user?.id ?? null;
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const lastFetchedUserIdRef = useRef<string | null>(null);
 
   const refreshUsuario = useCallback(async () => {
@@ -34,6 +36,7 @@ export function UsuarioProvider({ children }: { children: ReactNode }) {
 
     if (!userId) {
       setUsuario(null);
+      setLoadError(null);
       setLoading(false);
       lastFetchedUserIdRef.current = null;
       return;
@@ -48,8 +51,14 @@ export function UsuarioProvider({ children }: { children: ReactNode }) {
       .eq("id", userId)
       .maybeSingle();
 
-    if (error) console.error(error);
-    setUsuario((data as Usuario) ?? null);
+    if (error) {
+      console.error(error);
+      setLoadError(error.message);
+      setUsuario(null);
+    } else {
+      setLoadError(null);
+      setUsuario((data as Usuario) ?? null);
+    }
     lastFetchedUserIdRef.current = userId;
     setLoading(false);
   }, [userId, authLoading]);
@@ -66,11 +75,12 @@ export function UsuarioProvider({ children }: { children: ReactNode }) {
     () => ({
       usuario,
       loading: authLoading || loading,
+      loadError,
       refreshUsuario,
       isSuperadmin: Boolean(usuario?.superadmin),
       isProvisioned: Boolean(usuario),
     }),
-    [usuario, authLoading, loading, refreshUsuario]
+    [usuario, authLoading, loading, loadError, refreshUsuario]
   );
 
   return <UsuarioContext.Provider value={value}>{children}</UsuarioContext.Provider>;

@@ -1,6 +1,8 @@
 import { format, isBefore, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { supabase } from "@/lib/supabase";
 import type { LeadsClique } from "@/types/database";
+import type { Usuario } from "@/types/usuario";
 
 export type LeadCrmPayload = {
   observacao: string | null;
@@ -78,4 +80,38 @@ export function aggregateLeadCrmMetrics(leads: LeadsClique[]): LeadCrmMetrics {
     reuniaoHoje: leads.filter((lead) => isCrmDateToday(lead.data_reuniao)).length,
     semResponsavel: leads.filter((lead) => !lead.responsavel_id).length,
   };
+}
+
+export type LeadResponsavel = Pick<Usuario, "id" | "nome" | "email" | "foto_url">;
+
+export async function loadContaResponsaveis(contaId: string): Promise<Map<string, LeadResponsavel>> {
+  const { data } = await supabase
+    .from("conta_membros")
+    .select("user_id, usuarios(id, nome, email, foto_url)")
+    .eq("conta_id", contaId);
+
+  const map = new Map<string, LeadResponsavel>();
+  for (const row of data ?? []) {
+    const raw = (row as { user_id: string; usuarios: LeadResponsavel | LeadResponsavel[] | null }).usuarios;
+    const user = Array.isArray(raw) ? raw[0] : raw;
+    if (user?.id) map.set(user.id, user);
+  }
+  return map;
+}
+
+export function attachLeadResponsaveis(
+  leads: LeadsClique[],
+  byId: Map<string, LeadResponsavel>
+): LeadsClique[] {
+  return leads.map((lead) => ({
+    ...lead,
+    responsavel: lead.responsavel_id ? (byId.get(lead.responsavel_id) ?? lead.responsavel ?? null) : null,
+  }));
+}
+
+export function attachLeadResponsavel(
+  lead: LeadsClique,
+  byId: Map<string, LeadResponsavel>
+): LeadsClique {
+  return attachLeadResponsaveis([lead], byId)[0];
 }

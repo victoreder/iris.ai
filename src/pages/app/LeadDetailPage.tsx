@@ -22,6 +22,7 @@ import {
   type LeadDetailTab,
 } from "@/lib/leadDetailTabs";
 import { LEAD_DETAIL_SELECT } from "@/lib/leadsConstants";
+import { attachLeadResponsavel, loadContaResponsaveis } from "@/lib/leadCrm";
 import { formatPhoneBR } from "@/lib/leadsAnalytics";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
@@ -82,8 +83,10 @@ export function LeadDetailPage() {
       return;
     }
 
-    setLead(data as LeadsClique);
-    setEtapaId((data as LeadsClique).etapa_id ?? "");
+    const clique = data as LeadsClique;
+    const responsaveis = await loadContaResponsaveis(clique.conta_id);
+    setLead(attachLeadResponsavel(clique, responsaveis));
+    setEtapaId(clique.etapa_id ?? "");
     if (!opts?.silent) setLoading(false);
   }, [contaAtiva?.id, leadId]);
 

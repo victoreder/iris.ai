@@ -8,8 +8,9 @@ import { ContaSuspensaPage } from "@/pages/ContaSuspensaPage";
 
 export function AppAccessGuard({ children }: { children: React.ReactNode }) {
   const { loading: authLoading } = useAuth();
-  const { loading: usuarioLoading, isProvisioned } = useUsuario();
-  const { loading: contaLoading } = useConta();
+  const { loading: usuarioLoading, isProvisioned, loadError: usuarioError, refreshUsuario } =
+    useUsuario();
+  const { loading: contaLoading, loadError: contaError, refreshContas } = useConta();
 
   if (authLoading || usuarioLoading || contaLoading) {
     return (
@@ -23,6 +24,20 @@ export function AppAccessGuard({ children }: { children: React.ReactNode }) {
     return <Navigate to="/auth/convite" replace />;
   }
 
+  if (usuarioError || contaError) {
+    return (
+      <NoAccessPage
+        title="Não foi possível carregar o acesso"
+        description="O login funcionou, mas a verificação da sua conta falhou. Tente novamente."
+        detail={usuarioError ?? contaError}
+        onRetry={() => {
+          void refreshUsuario();
+          void refreshContas();
+        }}
+      />
+    );
+  }
+
   if (!isProvisioned) {
     return <NoAccessPage />;
   }
@@ -31,8 +46,8 @@ export function AppAccessGuard({ children }: { children: React.ReactNode }) {
 }
 
 export function AppLayoutGuard() {
-  const { contaAtiva, loading } = useConta();
-  const { isSuperadmin } = useUsuario();
+  const { contaAtiva, loading, loadError, refreshContas } = useConta();
+  const { isSuperadmin, usuario } = useUsuario();
 
   if (loading) {
     return (
@@ -42,9 +57,31 @@ export function AppLayoutGuard() {
     );
   }
 
+  if (loadError) {
+    return (
+      <NoAccessPage
+        title="Não foi possível carregar a empresa"
+        description="O login funcionou, mas as contas vinculadas não puderam ser lidas."
+        detail={loadError}
+        onRetry={() => void refreshContas()}
+      />
+    );
+  }
+
   if (!contaAtiva) {
     if (isSuperadmin) return <Navigate to="/admin" replace />;
-    return <NoAccessPage />;
+    return (
+      <NoAccessPage
+        title="Nenhuma empresa vinculada"
+        description={
+          <>
+            O usuário <strong>{usuario?.email}</strong> está provisionado, mas não pertence a nenhuma
+            conta.
+          </>
+        }
+        detail="Peça a um administrador para adicionar este e-mail em Equipe."
+      />
+    );
   }
 
   if (contaAtiva.status === "suspensa" && !isSuperadmin) {

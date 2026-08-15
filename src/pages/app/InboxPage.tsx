@@ -32,7 +32,7 @@ import { contaUrlRef } from "@/lib/appNavigation";
 import { leadDetailPath, type LeadDetailTab } from "@/lib/leadDetailTabs";
 import { LEAD_DETAIL_SELECT } from "@/lib/leadsConstants";
 import { groupLeadsByKanbanColumn } from "@/lib/leadsKanban";
-import { aggregateLeadCrmMetrics } from "@/lib/leadCrm";
+import { aggregateLeadCrmMetrics, attachLeadResponsaveis, loadContaResponsaveis } from "@/lib/leadCrm";
 import { getCanonicalConvertedLeads } from "@/lib/leadPhone";
 import {
   countActiveLeadsUtmFilters,
@@ -150,7 +150,7 @@ export function InboxPage() {
   const load = useCallback(async () => {
     if (!contaAtiva) return;
     setLoading(true);
-    const [cRes, lRes, eRes] = await Promise.all([
+    const [cRes, lRes, eRes, responsaveis] = await Promise.all([
       supabase
         .from("leads_cliques")
         .select(LEAD_DETAIL_SELECT)
@@ -160,8 +160,9 @@ export function InboxPage() {
         .limit(500),
       supabase.from("leads_links").select("id, nome, slug, instancia_id").eq("conta_id", contaAtiva.id),
       supabase.from("leads_jornada_etapas").select("*").eq("conta_id", contaAtiva.id).order("posicao"),
+      loadContaResponsaveis(contaAtiva.id),
     ]);
-    setCliques((cRes.data as LeadsClique[]) ?? []);
+    setCliques(attachLeadResponsaveis((cRes.data as LeadsClique[]) ?? [], responsaveis));
     setLinks((lRes.data as LeadsLink[]) ?? []);
     setEtapas((eRes.data as LeadsJornadaEtapa[]) ?? []);
     setLoading(false);

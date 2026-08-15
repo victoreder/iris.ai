@@ -22,3 +22,5 @@ COMMENT ON COLUMN public.leads_cliques.observacao IS 'Anotações internas do ti
 COMMENT ON COLUMN public.leads_cliques.data_follow_up IS 'Próximo follow-up combinado.';
 COMMENT ON COLUMN public.leads_cliques.data_reuniao IS 'Reunião marcada com o lead.';
 COMMENT ON COLUMN public.leads_cliques.responsavel_id IS 'Membro da conta responsável pelo lead.';
+
+NOTIFY pgrst, 'reload schema';

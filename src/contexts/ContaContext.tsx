@@ -25,6 +25,7 @@ interface ContaContextValue {
   contaAtiva: Conta | null;
   papelAtivo: ContaPapel | null;
   loading: boolean;
+  loadError: string | null;
   setContaAtiva: (conta: Conta) => void;
   refreshContas: () => Promise<void>;
   /** Criar e editar (admin + membro). */
@@ -46,6 +47,7 @@ export function ContaProvider({ children }: { children: ReactNode }) {
   const [membros, setMembros] = useState<ContaMembro[]>([]);
   const [contaAtiva, setContaAtivaState] = useState<Conta | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const lastFetchedUserIdRef = useRef<string | null>(null);
 
   const refreshContas = useCallback(async () => {
@@ -55,6 +57,7 @@ export function ContaProvider({ children }: { children: ReactNode }) {
       setContas([]);
       setMembros([]);
       setContaAtivaState(null);
+      setLoadError(null);
       setLoading(false);
       lastFetchedUserIdRef.current = null;
       return;
@@ -70,9 +73,12 @@ export function ContaProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       console.error(error);
+      setLoadError(error.message);
       setLoading(false);
       return;
     }
+
+    setLoadError(null);
 
     const rows = (membrosData ?? []) as ContaMembro[];
     setMembros(rows);
@@ -121,6 +127,7 @@ export function ContaProvider({ children }: { children: ReactNode }) {
       contaAtiva,
       papelAtivo,
       loading: authLoading || loading,
+      loadError,
       setContaAtiva,
       refreshContas,
       canWrite,
@@ -135,6 +142,7 @@ export function ContaProvider({ children }: { children: ReactNode }) {
       papelAtivo,
       authLoading,
       loading,
+      loadError,
       setContaAtiva,
       refreshContas,
       canWrite,

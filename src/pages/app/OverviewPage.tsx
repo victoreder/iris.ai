@@ -25,6 +25,7 @@ import { useContaSetupStatus } from "@/hooks/useContaSetupStatus";
 import { useLeadsInstancias } from "@/hooks/useLeadsInstancias";
 import { useProductTourOptional } from "@/contexts/ProductTourContext";
 import { LEAD_DETAIL_SELECT } from "@/lib/leadsConstants";
+import { attachLeadResponsaveis, loadContaResponsaveis } from "@/lib/leadCrm";
 import { getCanonicalConvertedLeads } from "@/lib/leadPhone";
 import {
   aggregateFunnel,
@@ -77,7 +78,7 @@ export function OverviewPage() {
   const load = useCallback(async () => {
     if (!contaAtiva) return;
     setLoading(true);
-    const [cRes, eRes] = await Promise.all([
+    const [cRes, eRes, responsaveis] = await Promise.all([
       supabase
         .from("leads_cliques")
         .select(LEAD_DETAIL_SELECT)
@@ -90,8 +91,9 @@ export function OverviewPage() {
         .select("*")
         .eq("conta_id", contaAtiva.id)
         .order("posicao"),
+      loadContaResponsaveis(contaAtiva.id),
     ]);
-    setCliques((cRes.data as LeadsClique[]) ?? []);
+    setCliques(attachLeadResponsaveis((cRes.data as LeadsClique[]) ?? [], responsaveis));
     setEtapas((eRes.data as LeadsJornadaEtapa[]) ?? []);
     setLoading(false);
   }, [contaAtiva?.id]);
