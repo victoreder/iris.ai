@@ -1,9 +1,9 @@
 import { getSupabase } from "../_lib.js";
 import { requireContaAuth } from "../_lib/auth.js";
-import { evolutionDeleteInstance } from "../_lib/evolutionLeads.js";
+import { evolutionDeleteInstance, hasUazapiToken } from "../_lib/evolutionLeads.js";
 import { corsLeads } from "../_lib/leadsUtils.js";
 
-function isEvolutionNotFoundError(err) {
+function isUazapiNotFoundError(err) {
   const msg = String(err?.message ?? "").toLowerCase();
   const status = err?.status;
   return status === 404 || msg.includes("not found") || msg.includes("does not exist");
@@ -28,7 +28,7 @@ export default async function handler(req, res) {
 
     const { data: inst, error: errInst } = await supabase
       .from("leads_instancias_whatsapp")
-      .select("id, instance_name")
+      .select("id, instance_name, token_instancia")
       .eq("id", id)
       .eq("conta_id", auth.contaId)
       .maybeSingle();
@@ -48,16 +48,18 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Erro ao remover links vinculados." });
     }
 
-    try {
-      await evolutionDeleteInstance(inst.instance_name);
-    } catch (e) {
-      if (!isEvolutionNotFoundError(e)) {
-        console.error("excluir-instancia evolution:", e);
-        return res.status(500).json({
-          error: e?.message ?? "Erro ao excluir instância na Evolution.",
-        });
+    if (hasUazapiToken(inst)) {
+      try {
+        await evolutionDeleteInstance(inst.token_instancia);
+      } catch (e) {
+        if (!isUazapiNotFoundError(e)) {
+          console.error("excluir-instancia uazapi:", e);
+          return res.status(500).json({
+            error: e?.message ?? "Erro ao excluir instância na UAZAPI.",
+          });
+        }
+        console.warn("excluir-instancia: instância já ausente na UAZAPI:", inst.instance_name);
       }
-      console.warn("excluir-instancia: instância já ausente na Evolution:", inst.instance_name);
     }
 
     const { error: errDelete } = await supabase

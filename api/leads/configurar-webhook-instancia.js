@@ -1,6 +1,6 @@
 import { getSupabase } from "../_lib.js";
 import { requireContaAuth } from "../_lib/auth.js";
-import { evolutionSetWebhook, getLeadsWebhookUrl } from "../_lib/evolutionLeads.js";
+import { evolutionSetWebhook, getLeadsWebhookUrl, hasUazapiToken } from "../_lib/evolutionLeads.js";
 import { corsLeads } from "../_lib/leadsUtils.js";
 
 export const config = { api: { bodyParser: { sizeLimit: "32kb" } } };
@@ -23,7 +23,7 @@ export default async function handler(req, res) {
     const supabase = getSupabase();
     const { data: inst, error: errInst } = await supabase
       .from("leads_instancias_whatsapp")
-      .select("id, instance_name")
+      .select("id, instance_name, token_instancia")
       .eq("id", id)
       .eq("conta_id", auth.contaId)
       .maybeSingle();
@@ -32,10 +32,16 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: "Instância não encontrada." });
     }
 
+    if (!hasUazapiToken(inst)) {
+      return res.status(400).json({
+        error: "Esta conexão ainda não está na UAZAPI. Gere o QR Code para criar e configurar o webhook.",
+      });
+    }
+
     let webhookConfigurado = false;
     let webhookErro = null;
     try {
-      await evolutionSetWebhook(inst.instance_name);
+      await evolutionSetWebhook(inst.token_instancia);
       webhookConfigurado = true;
     } catch (e) {
       webhookErro = e?.message ?? "Falha ao configurar webhook.";

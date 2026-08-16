@@ -44,7 +44,7 @@ const app = express();
 const PORT = Number(process.env.PORT) || 3333;
 
 app.use(cors());
-app.use(express.json({ limit: "512kb" }));
+app.use(express.json({ limit: "4mb" }));
 app.use(attachApiErrorLogger);
 
 app.get("/health", (_req, res) => {

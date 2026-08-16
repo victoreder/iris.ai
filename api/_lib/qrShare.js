@@ -1,16 +1,10 @@
 import { randomUUID } from "crypto";
-import { evolutionConnectInstance } from "./evolutionLeads.js";
+import { extractQrcodeFromUazapi, fetchFreshQrcode } from "./evolutionLeads.js";
 
 const DEFAULT_TTL_HOURS = 48;
 
-export function extractQrcodeFromEvolution(data) {
-  return (
-    data?.qrcode?.base64 ||
-    data?.base64 ||
-    data?.code ||
-    (typeof data?.qrcode === "string" ? data.qrcode : null)
-  );
-}
+export { fetchFreshQrcode };
+export const extractQrcodeFromEvolution = extractQrcodeFromUazapi;
 
 export function getQrPublicBaseUrl() {
   const base = String(
@@ -62,6 +56,9 @@ export async function resolveQrShareToken(supabase, token) {
         status,
         telefone,
         conta_id,
+        token_instancia,
+        id_externo,
+        webhook_configurado,
         contas ( nome, onboarding_pendente )
       )
     `
@@ -90,9 +87,4 @@ export async function resolveQrShareToken(supabase, token) {
     empresaNome,
     instanciaNome: inst.instance_name,
   };
-}
-
-export async function fetchFreshQrcode(instanceName) {
-  const data = await evolutionConnectInstance(instanceName);
-  return extractQrcodeFromEvolution(data);
 }

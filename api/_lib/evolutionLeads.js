@@ -1,14 +1,14 @@
-const { EVOLUTION_API_URL, EVOLUTION_API_KEY, BACKEND_PUBLIC_URL } = process.env;
+const { UAZAPI_API_URL, UAZAPI_ADMIN_TOKEN, BACKEND_PUBLIC_URL } = process.env;
 
-function getEvolutionBase() {
-  const base = String(EVOLUTION_API_URL ?? "").trim().replace(/\/+$/, "");
-  if (!base) throw new Error("Configure EVOLUTION_API_URL no ambiente.");
+function getUazapiBase() {
+  const base = String(UAZAPI_API_URL ?? "").trim().replace(/\/+$/, "");
+  if (!base) throw new Error("Configure UAZAPI_API_URL no ambiente.");
   return base;
 }
 
-function getEvolutionKey() {
-  const key = String(EVOLUTION_API_KEY ?? "").trim();
-  if (!key) throw new Error("Configure EVOLUTION_API_KEY no ambiente.");
+function getUazapiAdminToken() {
+  const key = String(UAZAPI_ADMIN_TOKEN ?? "").trim();
+  if (!key) throw new Error("Configure UAZAPI_ADMIN_TOKEN no ambiente.");
   return key;
 }
 
@@ -22,33 +22,46 @@ export function getLeadsWebhookUrl() {
   return `${base}/api/leads/webhook-evolution`;
 }
 
-async function evolutionFetch(path, options = {}) {
-  const url = `${getEvolutionBase()}${path}`;
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      apikey: getEvolutionKey(),
-      ...(options.headers || {}),
-    },
+export function hasUazapiToken(inst) {
+  return Boolean(String(inst?.token_instancia ?? "").trim());
+}
+
+function parseJsonSafe(text) {
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch {
+    return { raw: text };
+  }
+}
+
+function errorMessageFromBody(data, text, status) {
+  return (
+    data?.message ||
+    data?.error ||
+    (Array.isArray(data?.response?.message) ? data.response.message.join(", ") : null) ||
+    text ||
+    `UAZAPI HTTP ${status}`
+  );
+}
+
+async function uazapiFetch(path, { token, admin = false, method = "GET", body } = {}) {
+  const headers = { "Content-Type": "application/json" };
+  if (admin) headers.admintoken = getUazapiAdminToken();
+  else {
+    const t = String(token ?? "").trim();
+    if (!t) throw new Error("Token da instância UAZAPI ausente.");
+    headers.token = t;
+  }
+
+  const res = await fetch(`${getUazapiBase()}${path}`, {
+    method,
+    headers,
+    body: body != null ? JSON.stringify(body) : undefined,
   });
   const text = await res.text();
-  let data;
-  try {
-    data = text ? JSON.parse(text) : {};
-  } catch {
-    data = { raw: text };
-  }
+  const data = parseJsonSafe(text);
   if (!res.ok) {
-    const msg =
-      data?.message ||
-      data?.error ||
-      (Array.isArray(data?.response?.message)
-        ? data.response.message.join(", ")
-        : null) ||
-      text ||
-      `Evolution HTTP ${res.status}`;
-    const err = new Error(msg);
+    const err = new Error(errorMessageFromBody(data, text, res.status));
     err.status = res.status;
     err.data = data;
     throw err;
@@ -56,172 +69,236 @@ async function evolutionFetch(path, options = {}) {
   return data;
 }
 
-export async function evolutionCreateInstance(instanceName) {
-  return evolutionFetch("/instance/create", {
-    method: "POST",
-    body: JSON.stringify({
-      instanceName,
-      integration: "WHATSAPP-BAILEYS",
-      qrcode: true,
-    }),
-  });
-}
-
-export async function evolutionConnectInstance(instanceName) {
-  return evolutionFetch(`/instance/connect/${encodeURIComponent(instanceName)}`, {
-    method: "GET",
-  });
-}
-
-export async function evolutionDeleteInstance(instanceName) {
-  return evolutionFetch(`/instance/delete/${encodeURIComponent(instanceName)}`, {
-    method: "DELETE",
-  });
-}
-
-export async function evolutionConnectionState(instanceName) {
-  return evolutionFetch(
-    `/instance/connectionState/${encodeURIComponent(instanceName)}`,
-    { method: "GET" }
-  );
-}
-
-export async function evolutionFetchInstances(instanceName) {
-  const query = instanceName
-    ? `?instanceName=${encodeURIComponent(instanceName)}`
-    : "";
-  return evolutionFetch(`/instance/fetchInstances${query}`, { method: "GET" });
-}
-
-/**
- * Extrai telefone (somente dígitos) de respostas variadas da Evolution API v2.
- * @param {unknown} data
- * @returns {string | null}
- */
-export function extractPhoneFromEvolutionData(data) {
-  if (!data || typeof data !== "object") return null;
-
-  const candidates = [];
-
-  const push = (v) => {
-    if (v == null) return;
-    const s = String(v).trim();
-    if (s) candidates.push(s);
+function pickInstanceFields(data) {
+  const inst = data?.instance && typeof data.instance === "object" ? data.instance : data;
+  return {
+    raw: data,
+    token: inst?.token ?? data?.token ?? null,
+    id: inst?.id ?? data?.id ?? null,
+    name: inst?.name ?? data?.name ?? null,
+    status: inst?.status ?? data?.status ?? "",
+    qrcode: inst?.qrcode ?? data?.qrcode ?? data?.base64 ?? data?.qrCode ?? null,
+    paircode: inst?.paircode ?? data?.paircode ?? null,
+    owner: inst?.owner ?? data?.owner ?? inst?.phone ?? data?.phone ?? null,
   };
+}
 
-  const inst = data.instance ?? data;
-  push(inst.owner);
-  push(inst.wuid);
-  push(inst.ownerJid);
-  push(inst.number);
-  push(inst.phone);
-  push(data.owner);
-  push(data.wuid);
-  push(data.ownerJid);
-  push(data.number);
+export async function uazapiCreateInstance(instanceName) {
+  const data = await uazapiFetch("/instance/init", {
+    admin: true,
+    method: "POST",
+    body: { name: instanceName },
+  });
+  const parsed = pickInstanceFields(data);
+  if (!parsed.token) {
+    throw new Error("UAZAPI não retornou o token da instância.");
+  }
+  return parsed;
+}
 
-  if (Array.isArray(data)) {
-    for (const item of data) {
-      const p = extractPhoneFromEvolutionData(item);
-      if (p) candidates.push(p);
+export async function uazapiFindInstanceByName(instanceName) {
+  const name = String(instanceName ?? "").trim();
+  if (!name) return null;
+  try {
+    const list = await uazapiFetch("/instance/all", { admin: true, method: "GET" });
+    const items = Array.isArray(list)
+      ? list
+      : list?.instances ?? list?.data ?? list?.result ?? [];
+    const found = (Array.isArray(items) ? items : []).find((item) => {
+      const n = item?.name ?? item?.instanceName ?? item?.instance?.name ?? "";
+      return String(n) === name;
+    });
+    return found ? pickInstanceFields(found) : null;
+  } catch (e) {
+    console.warn("uazapiFindInstanceByName:", e?.message);
+    return null;
+  }
+}
+
+export async function evolutionCreateInstance(instanceName) {
+  try {
+    return await uazapiCreateInstance(instanceName);
+  } catch (e) {
+    const existing = await uazapiFindInstanceByName(instanceName);
+    if (existing?.token) {
+      console.warn("criar-instancia: reutilizando instância UAZAPI existente:", instanceName);
+      return existing;
     }
+    throw e;
   }
+}
 
-  for (const raw of candidates) {
-    const phone = jidToPhone(raw.includes("@") ? raw : `${raw}@s.whatsapp.net`);
-    if (phone.length >= 10) return phone;
+export async function evolutionConnectInstance(token) {
+  return uazapiFetch("/instance/connect", {
+    token,
+    method: "POST",
+    body: {},
+  });
+}
+
+export async function evolutionDeleteInstance(token) {
+  return uazapiFetch("/instance", { token, method: "DELETE" });
+}
+
+export async function evolutionSetWebhook(token) {
+  const body = {
+    url: getLeadsWebhookUrl(),
+    events: ["messages", "connection"],
+    enabled: true,
+    addUrlEvents: false,
+    addUrlTypesMessages: false,
+    excludeMessages: ["wasSentByApi", "isGroupYes"],
+  };
+  try {
+    return await uazapiFetch("/webhook/set", { token, method: "POST", body });
+  } catch (e) {
+    return uazapiFetch("/webhook", { token, method: "POST", body });
   }
+}
 
+export function extractQrcodeFromUazapi(data) {
+  const parsed = pickInstanceFields(data);
+  const qr = parsed.qrcode;
+  if (typeof qr === "string" && qr.trim()) return qr.trim();
+  if (typeof data?.qrcode?.base64 === "string") return data.qrcode.base64;
+  if (typeof data?.code === "string") return data.code;
   return null;
 }
 
-/**
- * Busca telefone da instância conectada na Evolution (connectionState + fetchInstances).
- * @param {string} instanceName
- * @returns {Promise<{ connected: boolean, state: string, telefone: string | null }>}
- */
-export async function resolveInstancePhone(instanceName) {
-  const name = String(instanceName ?? "").trim();
-  if (!name) return { connected: false, state: "", telefone: null };
-
-  let state = "";
-  let telefone = null;
-
-  try {
-    const stateData = await evolutionConnectionState(name);
-    state =
-      stateData?.instance?.state ||
-      stateData?.state ||
-      stateData?.connectionStatus?.state ||
-      stateData?.connectionStatus ||
-      "";
-
-    telefone = extractPhoneFromEvolutionData(stateData);
-  } catch (e) {
-    console.warn("resolveInstancePhone connectionState:", e?.message);
-  }
-
-  if (!telefone) {
-    try {
-      const list = await evolutionFetchInstances(name);
-      const items = Array.isArray(list) ? list : list?.instances ?? [list];
-      for (const item of items) {
-        const itemName =
-          item?.instance?.instanceName ??
-          item?.instanceName ??
-          item?.name ??
-          "";
-        if (itemName && itemName !== name) continue;
-        const p = extractPhoneFromEvolutionData(item);
-        if (p) {
-          telefone = p;
-          break;
-        }
-      }
-      if (!telefone) {
-        telefone = extractPhoneFromEvolutionData(list);
-      }
-    } catch (e) {
-      console.warn("resolveInstancePhone fetchInstances:", e?.message);
+export function extractPhoneFromEvolutionData(data) {
+  if (!data || typeof data !== "object") return null;
+  const parsed = pickInstanceFields(data);
+  const candidates = [parsed.owner, data.owner, data.phone, data.wuid, data.number];
+  if (Array.isArray(data)) {
+    for (const item of data) {
+      const p = extractPhoneFromEvolutionData(item);
+      if (p) return p;
     }
   }
-
-  const connected = /open|connected/i.test(String(state)) || Boolean(telefone);
-
-  return {
-    connected,
-    state: String(state),
-    telefone,
-  };
+  for (const raw of candidates) {
+    if (raw == null) continue;
+    const s = String(raw).trim();
+    const phone = jidToPhone(s.includes("@") ? s : `${s}@s.whatsapp.net`);
+    if (phone.length >= 10) return phone;
+  }
+  return null;
 }
 
-export async function evolutionSetWebhook(instanceName) {
-  const webhookUrl = getLeadsWebhookUrl();
-  const body = {
-    webhook: {
-      enabled: true,
-      url: webhookUrl,
-      webhookByEvents: false,
-      events: ["MESSAGES_UPSERT"],
-    },
-  };
+function mapUazapiConnectionStatus(status) {
+  const s = String(status ?? "").toLowerCase();
+  if (s === "connected" || s === "open") return { connected: true, iris: "conectado", state: s };
+  if (s === "connecting") return { connected: false, iris: "conectando", state: s };
+  if (s === "disconnected" || s === "hibernated" || s === "close") {
+    return { connected: false, iris: "desconectado", state: s };
+  }
+  return { connected: false, iris: "conectando", state: s };
+}
+
+/**
+ * @param {string} token
+ * @returns {Promise<{ connected: boolean, state: string, statusIris: string, telefone: string | null, qrcode: string | null }>}
+ */
+export async function resolveInstancePhone(token) {
+  const t = String(token ?? "").trim();
+  if (!t) {
+    return { connected: false, state: "", statusIris: "desconectado", telefone: null, qrcode: null };
+  }
 
   try {
-    return await evolutionFetch(`/webhook/set/${encodeURIComponent(instanceName)}`, {
-      method: "POST",
-      body: JSON.stringify(body),
-    });
+    const data = await uazapiFetch("/instance/status", { token: t, method: "GET" });
+    const parsed = pickInstanceFields(data);
+    const mapped = mapUazapiConnectionStatus(parsed.status);
+    const telefone = extractPhoneFromEvolutionData(data);
+    const connected = mapped.connected;
+    return {
+      connected,
+      state: mapped.state,
+      statusIris: connected && telefone ? "conectado" : mapped.iris,
+      telefone,
+      qrcode: extractQrcodeFromUazapi(data),
+    };
   } catch (e) {
-    return evolutionFetch(`/webhook/set/${encodeURIComponent(instanceName)}`, {
-      method: "POST",
-      body: JSON.stringify({
-        enabled: true,
-        url: webhookUrl,
-        webhookByEvents: false,
-        events: ["MESSAGES_UPSERT"],
-      }),
-    });
+    console.warn("resolveInstancePhone:", e?.message);
+    return { connected: false, state: "", statusIris: "desconectado", telefone: null, qrcode: null };
   }
+}
+
+export async function persistUazapiCredenciais(supabase, instanciaId, { token, id }) {
+  const updates = {
+    token_instancia: token,
+    updated_at: new Date().toISOString(),
+  };
+  if (id) updates.id_externo = String(id);
+  const { data, error } = await supabase
+    .from("leads_instancias_whatsapp")
+    .update(updates)
+    .eq("id", instanciaId)
+    .select("*")
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Instância só no banco (ex.: Evolution antiga): cria na UAZAPI, configura webhook e grava token.
+ */
+export async function ensureUazapiInstance(supabase, inst) {
+  if (hasUazapiToken(inst)) return inst;
+
+  const created = await evolutionCreateInstance(inst.instance_name);
+  let webhookConfigurado = false;
+  let webhookErro = null;
+  try {
+    await evolutionSetWebhook(created.token);
+    webhookConfigurado = true;
+  } catch (e) {
+    webhookErro = e?.message ?? "Falha ao configurar webhook.";
+    console.error("ensureUazapiInstance webhook:", e);
+  }
+
+  const { data, error } = await supabase
+    .from("leads_instancias_whatsapp")
+    .update({
+      token_instancia: created.token,
+      id_externo: created.id ? String(created.id) : inst.id_externo,
+      webhook_configurado: webhookConfigurado,
+      webhook_erro: webhookErro,
+      status: "conectando",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", inst.id)
+    .select("*")
+    .maybeSingle();
+
+  if (error || !data) {
+    throw new Error(error?.message ?? "Erro ao salvar credenciais UAZAPI.");
+  }
+  return data;
+}
+
+export async function fetchFreshQrcode(token) {
+  const data = await evolutionConnectInstance(token);
+  let qr = extractQrcodeFromUazapi(data);
+  if (!qr) {
+    try {
+      const status = await uazapiFetch("/instance/status", { token, method: "GET" });
+      qr = extractQrcodeFromUazapi(status);
+    } catch (e) {
+      console.warn("fetchFreshQrcode status:", e?.message);
+    }
+  }
+  return qr;
+}
+
+function messageRoot(item) {
+  if (!item || typeof item !== "object") return {};
+  if (item.chatid || item.messageid || item.fromMe != null || item.mediaType) return item;
+  return item.message ?? item.data ?? item;
+}
+
+function chatRoot(item) {
+  if (!item || typeof item !== "object") return {};
+  return item.chat ?? item.data?.chat ?? {};
 }
 
 /** Extrai texto de mensagem Evolution/Baileys. */
@@ -264,21 +341,18 @@ export function extractMessageText(messageData) {
   return "";
 }
 
-/** Extrai texto do item completo do webhook (vários formatos Evolution v2). */
+/** Extrai texto do item completo do webhook (UAZAPI + Evolution). */
 export function extractMessageTextFromWebhookItem(item) {
+  const root = messageRoot(item);
+  const content = root.content ?? item?.content;
   const parts = [
+    typeof root.text === "string" ? root.text : "",
+    typeof content === "string" ? content : "",
+    typeof content?.caption === "string" ? content.caption : "",
+    typeof root.buttonOrListid === "string" ? root.buttonOrListid : "",
     extractMessageText(item),
     extractMessageText(item?.message),
     extractMessageText(item?.data),
-    typeof item?.data?.message === "string" ? item.data.message : "",
-    item?.data?.message?.conversation,
-    item?.message?.conversation,
-    item?.data?.text?.body,
-    item?.message?.text?.body,
-    item?.data?.body,
-    item?.message?.body,
-    typeof item?.text === "string" ? item.text : "",
-    typeof item?.body === "string" ? item.body : "",
   ];
   for (const p of parts) {
     const s = String(p ?? "").trim();
@@ -292,8 +366,14 @@ function isWhatsAppPhoneJid(jid) {
   return j.includes("@s.whatsapp.net") || j.includes("@c.us") || j.includes("@whatsapp.net");
 }
 
-/** JID do remetente (suporta @lid com participant / remoteJidAlt). */
+/** JID do lead (chat), nunca LID do sender. */
 export function extractSenderJid(item) {
+  const root = messageRoot(item);
+  const chat = chatRoot(item);
+  const chatid = root.chatid || chat.wa_chatid || item?.chatid;
+  if (chatid && isWhatsAppPhoneJid(chatid)) return chatid;
+  if (chatid && !String(chatid).includes("@lid")) return chatid;
+
   const key = item?.key ?? item?.data?.key ?? {};
   const participant = key.participant || item?.participant || item?.data?.participant;
   const remoteJidAlt = key.remoteJidAlt || item?.remoteJidAlt;
@@ -302,11 +382,11 @@ export function extractSenderJid(item) {
   if (participant && isWhatsAppPhoneJid(participant)) return participant;
   if (remoteJidAlt && isWhatsAppPhoneJid(remoteJidAlt)) return remoteJidAlt;
   if (isWhatsAppPhoneJid(remoteJid)) return remoteJid;
+  if (chatid) return chatid;
   if (participant) return participant;
   return remoteJid || null;
 }
 
-/** Telefone do remetente a partir do remoteJid (ou participant/remoteJidAlt). */
 export function jidToPhone(remoteJid) {
   const jid = String(remoteJid ?? "");
   if (!jid || jid.includes("@g.us")) return "";
@@ -317,8 +397,23 @@ export function jidToPhone(remoteJid) {
   return digits;
 }
 
-/** Telefone a partir do item completo do webhook (key com @lid + remoteJidAlt). */
+/** Telefone do lead: chatid / wa_chatid / chat.phone — nunca sender LID nem owner. */
 export function phoneFromWebhookItem(item) {
+  const root = messageRoot(item);
+  const chat = chatRoot(item);
+  const fromMe = root.fromMe === true || item?.fromMe === true;
+
+  const fromChatid = jidToPhone(root.chatid || chat.wa_chatid || item?.chatid);
+  if (fromChatid) return fromChatid;
+
+  const fromChatPhone = String(chat.phone ?? "").replace(/\D/g, "");
+  if (fromChatPhone.length >= 10 && fromChatPhone.length <= 15) return fromChatPhone;
+
+  if (!fromMe) {
+    const fromSenderPn = jidToPhone(root.sender_pn || item?.sender_pn);
+    if (fromSenderPn) return fromSenderPn;
+  }
+
   const jid = extractSenderJid(item);
   const fromJid = jidToPhone(jid);
   if (fromJid) return fromJid;
@@ -326,9 +421,6 @@ export function phoneFromWebhookItem(item) {
   const key = item?.key ?? item?.data?.key ?? {};
   const alt = key.remoteJidAlt || item?.remoteJidAlt;
   if (alt) return jidToPhone(alt);
-
-  const participant = key.participant || item?.participant;
-  if (participant) return jidToPhone(participant);
 
   return "";
 }

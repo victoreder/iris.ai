@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Label, Select, Textarea } from "@/components/ui/input";
 import type { LeadsConfig, LeadsInstanciaWhatsapp } from "@/types/database";
+import { LEADS_INSTANCIA_COLUNAS } from "@/types/database";
 
 const TOTAL_ETAPAS = 7;
 
@@ -34,7 +35,7 @@ const ESTILO_CAMPANHA_OPCOES: { id: EstiloCampanha; label: string }[] = [
 ];
 
 function qrImageSrc(base64: string) {
-  if (base64.startsWith("data:")) return base64;
+  if (base64.startsWith("data:") || /^https?:\/\//i.test(base64)) return base64;
   return `data:image/png;base64,${base64}`;
 }
 
@@ -155,6 +156,7 @@ export function OnboardingWizard() {
   const [metaPixelId, setMetaPixelId] = useState("");
   const [metaToken, setMetaToken] = useState("");
   const [metaTestCode, setMetaTestCode] = useState("");
+  const [metaConectado, setMetaConectado] = useState(false);
 
   const [campanhaNome, setCampanhaNome] = useState("");
   const [campanhaMensagem, setCampanhaMensagem] = useState("Olá! Quero saber mais sobre o atendimento.");
@@ -167,10 +169,14 @@ export function OnboardingWizard() {
     const [instRes, metaRes] = await Promise.all([
       supabase
         .from("leads_instancias_whatsapp")
-        .select("*")
+        .select(LEADS_INSTANCIA_COLUNAS)
         .eq("conta_id", contaAtiva.id)
         .order("created_at", { ascending: true }),
-      supabase.from("leads_config").select("*").eq("conta_id", contaAtiva.id).maybeSingle(),
+      supabase
+        .from("leads_config")
+        .select("id, conta_id, meta_pixel_id, meta_conectado, meta_test_event_code, evento_padrao, updated_at")
+        .eq("conta_id", contaAtiva.id)
+        .maybeSingle(),
     ]);
 
     const instDb = (instRes.data as LeadsInstanciaWhatsapp[]) ?? [];
@@ -183,8 +189,9 @@ export function OnboardingWizard() {
     });
     const metaDb = (metaRes.data as LeadsConfig | null) ?? null;
     setMetaPixelId(metaDb?.meta_pixel_id ?? "");
-    setMetaToken(metaDb?.meta_access_token ?? "");
+    setMetaToken("");
     setMetaTestCode(metaDb?.meta_test_event_code ?? "");
+    setMetaConectado(Boolean(metaDb?.meta_conectado));
     setLoadingDadosExtras(false);
   }, [contaAtiva]);
 
@@ -289,7 +296,7 @@ export function OnboardingWizard() {
         setInstanciaSelecionada(instanciaId);
         const instRes = await supabase
           .from("leads_instancias_whatsapp")
-          .select("*")
+          .select(LEADS_INSTANCIA_COLUNAS)
           .eq("conta_id", contaAtiva.id)
           .order("created_at", { ascending: true });
         setInstancias((instRes.data as LeadsInstanciaWhatsapp[]) ?? []);
@@ -298,7 +305,8 @@ export function OnboardingWizard() {
           .from("leads_instancias_whatsapp")
           .update({ nome: nomeFinal, updated_at: new Date().toISOString() })
           .eq("id", instanciaId)
-          .eq("conta_id", contaAtiva.id);
+          .eq("conta_id", contaAtiva.id)
+          .select(LEADS_INSTANCIA_COLUNAS);
       }
       const qrRes = await apiGet<ConnectQrResponse>(
         "/api/leads/conectar-instancia",
@@ -321,7 +329,7 @@ export function OnboardingWizard() {
   };
 
   const salvarMeta = async () => {
-    if (!metaPixelId.trim() || !metaToken.trim()) {
+    if (!metaPixelId.trim() || (!metaToken.trim() && !metaConectado)) {
       toast.error("Preencha o Pixel ID e o Access Token para continuar.");
       return;
     }
@@ -331,7 +339,7 @@ export function OnboardingWizard() {
         "/api/leads/salvar-config-meta",
         {
           metaPixelId: metaPixelId.trim(),
-          metaAccessToken: metaToken.trim(),
+          ...(metaToken.trim() ? { metaAccessToken: metaToken.trim() } : {}),
           metaTestEventCode: metaTestCode.trim() || null,
         },
         contaAtiva.id
@@ -671,6 +679,11 @@ export function OnboardingWizard() {
                     type="password"
                     value={metaToken}
                     onChange={(e) => setMetaToken(e.target.value)}
+                    placeholder={
+                      metaConectado
+                        ? "Token já configurado — preencha só para substituir"
+                        : undefined
+                    }
                   />
                 </div>
                 <div className="space-y-2">

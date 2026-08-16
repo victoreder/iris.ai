@@ -20,14 +20,14 @@ export function useContaSetupStatus() {
     }
     setLoading(true);
     const [configRes, instRes, linksRes, etapasRes] = await Promise.all([
-      supabase.from("leads_config").select("meta_pixel_id, meta_access_token").eq("conta_id", contaAtiva.id).maybeSingle(),
+      supabase.from("leads_config").select("meta_pixel_id, meta_conectado").eq("conta_id", contaAtiva.id).maybeSingle(),
       supabase.from("leads_instancias_whatsapp").select("id").eq("conta_id", contaAtiva.id).limit(1),
       supabase.from("leads_links").select("id").eq("conta_id", contaAtiva.id).limit(1),
       supabase.from("leads_jornada_etapas").select("primeiro_contato").eq("conta_id", contaAtiva.id),
     ]);
 
-    const cfg = configRes.data as Pick<LeadsConfig, "meta_pixel_id" | "meta_access_token"> | null;
-    setPixelOk(Boolean(cfg?.meta_pixel_id?.trim() && cfg?.meta_access_token?.trim()));
+    const cfg = configRes.data as Pick<LeadsConfig, "meta_pixel_id" | "meta_conectado"> | null;
+    setPixelOk(Boolean(cfg?.meta_pixel_id?.trim() && cfg?.meta_conectado));
 
     setWhatsappOk((instRes.data?.length ?? 0) > 0);
     setCampanhaOk((linksRes.data?.length ?? 0) > 0);

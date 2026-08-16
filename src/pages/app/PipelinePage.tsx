@@ -16,6 +16,7 @@ import { DialogRoot, DialogContent, DialogFooter } from "@/components/ui/dialog"
 import { Input, Label, Select } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import type { LeadsInstanciaWhatsapp, LeadsJornadaEtapa } from "@/types/database";
+import { LEADS_INSTANCIA_COLUNAS } from "@/types/database";
 
 interface EtapaForm {
   nome: string;
@@ -54,7 +55,7 @@ export function PipelinePage() {
     if (!contaAtiva) return;
     setLoading(true);
     const [iRes, eRes] = await Promise.all([
-      supabase.from("leads_instancias_whatsapp").select("*").eq("conta_id", contaAtiva.id).order("nome"),
+      supabase.from("leads_instancias_whatsapp").select(LEADS_INSTANCIA_COLUNAS).eq("conta_id", contaAtiva.id).order("nome"),
       supabase.from("leads_jornada_etapas").select("*").eq("conta_id", contaAtiva.id).order("posicao"),
     ]);
     const lista = (iRes.data as LeadsInstanciaWhatsapp[]) ?? [];

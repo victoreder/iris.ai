@@ -12,7 +12,7 @@ type QrPublicResponse = {
 };
 
 function qrImageSrc(base64: string): string {
-  if (base64.startsWith("data:")) return base64;
+  if (base64.startsWith("data:") || /^https?:\/\//i.test(base64)) return base64;
   return `data:image/png;base64,${base64}`;
 }
 

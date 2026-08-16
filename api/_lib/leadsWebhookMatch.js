@@ -8,34 +8,67 @@ import { generateTrackingId, onlyDigits, phonesMatch } from "./leadsUtils.js";
 const CLIQUE_SELECT =
   "*, leads_links(id, slug, nome, mensagem_inicial, instancia_id)";
 
+function attachChat(item, chat) {
+  if (!item || typeof item !== "object") return item;
+  if (item.chat) return item;
+  if (chat && typeof chat === "object") return { ...item, chat };
+  return item;
+}
+
 /**
- * Extrai lista de mensagens do payload Evolution (vários formatos v1/v2).
+ * Extrai lista de mensagens do payload UAZAPI (e fallback Evolution).
  */
 export function extractEvolutionMessages(body) {
-  const event = String(body?.event ?? body?.type ?? "").toLowerCase();
-  const instance = body?.instance ?? body?.instanceName ?? body?.instance?.instanceName ?? null;
+  const event = String(body?.EventType ?? body?.event ?? body?.type ?? "").toLowerCase();
+  const instance =
+    body?.instanceName ??
+    body?.instance ??
+    body?.instance?.instanceName ??
+    null;
+  const chat = body?.chat ?? null;
+
+  const messages = [];
+
+  if (body?.message && typeof body.message === "object" && !Array.isArray(body.message)) {
+    messages.push(attachChat(body.message, chat));
+  }
 
   const roots = [];
   if (body?.data != null) roots.push(body.data);
-  if (body?.message != null) roots.push(body);
   if (Array.isArray(body?.messages)) roots.push(...body.messages);
 
-  const messages = [];
   for (const root of roots) {
     if (Array.isArray(root)) {
-      messages.push(...root);
+      messages.push(...root.map((m) => attachChat(m, chat)));
     } else if (root?.messages && Array.isArray(root.messages)) {
-      messages.push(...root.messages);
-    } else if (root?.key || root?.message) {
-      messages.push(root);
+      messages.push(...root.messages.map((m) => attachChat(m, chat)));
+    } else if (root && typeof root === "object" && (root.key || root.message || root.chatid || root.messageid)) {
+      if (root.message && typeof root.message === "object" && (root.message.chatid || root.message.fromMe != null)) {
+        messages.push(attachChat(root.message, root.chat ?? chat));
+      } else {
+        messages.push(attachChat(root, root.chat ?? chat));
+      }
     }
   }
 
-  return { event, instance, messages };
+  return { event, instance, messages, owner: body?.owner ?? null };
 }
 
-/** Direção da mensagem no payload Evolution/Baileys. */
+export function isConnectionEvent(event) {
+  return String(event ?? "").toLowerCase() === "connection";
+}
+
+/** Direção da mensagem no payload UAZAPI / Evolution. */
 export function getWebhookMessageDirection(item) {
+  const root = item?.chatid || item?.fromMe != null ? item : item?.message ?? item?.data ?? item;
+  const chat = item?.chat ?? {};
+  const chatid = String(root?.chatid ?? chat.wa_chatid ?? item?.chatid ?? item?.key?.remoteJid ?? "");
+  if (root?.isGroup === true || chat.wa_isGroup === true) return "grupo";
+  if (chatid.includes("@g.us")) return "grupo";
+  if (chatid.includes("@broadcast")) return "broadcast";
+  const fromMe = root?.fromMe ?? item?.fromMe ?? item?.key?.fromMe ?? item?.data?.key?.fromMe;
+  if (fromMe === true) return "enviada_pela_instancia";
+  if (fromMe === false) return "recebida_do_lead";
   const key = item?.key ?? item?.data?.key ?? {};
   const jid = String(key.remoteJid ?? item?.remoteJid ?? "");
   if (jid.includes("@g.us")) return "grupo";
@@ -64,13 +97,14 @@ export function summarizeWebhookMessage(item, extractText) {
   const key = item?.key ?? item?.data?.key ?? {};
   const direction = getWebhookMessageDirection(item);
   const text = typeof extractText === "function" ? extractText(item) : "";
+  const fromMe = item?.fromMe ?? key.fromMe ?? null;
   return {
     direction,
-    fromMe: key.fromMe ?? null,
+    fromMe,
     status: item?.status ?? item?.data?.status ?? null,
     addressingMode: key.addressingMode ?? null,
-    remoteJid: key.remoteJid ?? item?.remoteJid ?? null,
-    remoteJidAlt: key.remoteJidAlt ?? null,
+    remoteJid: item?.chatid ?? key.remoteJid ?? item?.remoteJid ?? null,
+    remoteJidAlt: item?.sender_pn ?? key.remoteJidAlt ?? null,
     textoExtraido: text ? String(text).trim().slice(0, 120) : "",
     processavelParaJornada: isJornadaWebhookMessage(item),
     usoJornada:

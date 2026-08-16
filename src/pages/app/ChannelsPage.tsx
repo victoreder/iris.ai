@@ -19,6 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { LeadsInstanciaWhatsapp, StatusLeadsInstancia } from "@/types/database";
+import { LEADS_INSTANCIA_COLUNAS } from "@/types/database";
 import type { Plano } from "@/types/usuario";
 
 const statusLabels: Record<StatusLeadsInstancia, string> = {
@@ -42,6 +43,11 @@ type ConnectQrResponse = {
   shareUrl?: string;
 };
 
+type StatusInstanciaResponse = {
+  telefone?: string | null;
+  qrcode?: string | null;
+};
+
 type QrDialogData = {
   instanciaId: string;
   base64?: string;
@@ -55,7 +61,7 @@ function extractQrBase64(data: ConnectQrResponse): string | undefined {
 }
 
 function qrImageSrc(base64: string): string {
-  if (base64.startsWith("data:")) return base64;
+  if (base64.startsWith("data:") || /^https?:\/\//i.test(base64)) return base64;
   return `data:image/png;base64,${base64}`;
 }
 
@@ -81,7 +87,7 @@ export function ChannelsPage() {
     const [instRes, planoRes] = await Promise.all([
       supabase
         .from("leads_instancias_whatsapp")
-        .select("*")
+        .select(LEADS_INSTANCIA_COLUNAS)
         .eq("conta_id", contaAtiva.id)
         .order("created_at", { ascending: false }),
       contaAtiva.plano_id
@@ -110,7 +116,7 @@ export function ChannelsPage() {
       if (pollRef.current) clearInterval(pollRef.current);
       pollRef.current = setInterval(async () => {
         try {
-          const status = await apiGet<{ telefone?: string }>(
+          const status = await apiGet<StatusInstanciaResponse>(
             "/api/leads/status-instancia",
             { instanciaId },
             contaAtiva.id
@@ -121,6 +127,15 @@ export function ChannelsPage() {
             setQrData(null);
             toast.success("WhatsApp conectado!");
             void load();
+            return;
+          }
+          const nextQr = status.qrcode;
+          if (nextQr) {
+            setQrData((prev) =>
+              prev && prev.instanciaId === instanciaId && prev.base64 !== nextQr
+                ? { ...prev, base64: nextQr }
+                : prev
+            );
           }
         } catch {
           /* ignore poll errors */
@@ -144,7 +159,7 @@ export function ChannelsPage() {
       );
       const base64 = extractQrBase64(data);
       if (!base64) {
-        toast.error("QR Code não retornado pela Evolution. Tente novamente.");
+        toast.error("QR Code não retornado. Tente novamente.");
       }
       setQrData({
         instanciaId,
@@ -250,7 +265,7 @@ export function ChannelsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-muted-foreground">Conectar WhatsApp via Evolution API</p>
+          <p className="text-muted-foreground">Conectar WhatsApp</p>
           {maxWhatsapps != null && (
             <p className="mt-1 text-sm text-muted-foreground">
               {instancias.length} de {maxWhatsapps} WhatsApp(s) do plano
@@ -364,7 +379,7 @@ export function ChannelsPage() {
       <DialogRoot open={Boolean(deleteTarget)} onOpenChange={(v) => !v && setDeleteTarget(null)}>
         <DialogContent title="Excluir WhatsApp?">
           <p className="text-sm text-muted-foreground">
-            A instância <strong>{deleteTarget?.nome}</strong> será removida do Viziom e da Evolution.
+            A instância <strong>{deleteTarget?.nome}</strong> será removida do Viziom e da UAZAPI.
             Links rastreáveis vinculados a este número também serão excluídos.
           </p>
           <DialogFooter>

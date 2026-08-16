@@ -3,6 +3,7 @@ import {
   extractMediaFileNameFromItem,
   fetchMediaFromEvolution,
   isFetchableMediaTipo,
+  normalizeMediaMime,
 } from "./evolutionMedia.js";
 import {
   buildMensagemMediaKey,
@@ -23,8 +24,13 @@ const TIPO_LABELS = {
 };
 
 export function extractMessageIdFromWebhookItem(item) {
-  const key = item?.key ?? item?.data?.key ?? {};
-  const id = key.id ?? item?.id ?? item?.data?.id;
+  const id =
+    item?.messageid ??
+    item?.data?.messageid ??
+    item?.key?.id ??
+    item?.data?.key?.id ??
+    item?.id ??
+    item?.data?.id;
   return id != null && String(id).trim() ? String(id).trim() : null;
 }
 
@@ -49,6 +55,21 @@ export function extractMessageTimestampFromWebhookItem(item) {
 }
 
 export function detectMessageTipoFromWebhookItem(item, text) {
+  const mediaType = String(item?.mediaType ?? item?.data?.mediaType ?? "").toLowerCase();
+  const messageType = String(item?.messageType ?? item?.data?.messageType ?? "").toLowerCase();
+  const type = String(item?.type ?? item?.data?.type ?? "").toLowerCase();
+
+  if (mediaType === "image" || messageType.includes("image")) return "imagem";
+  if (mediaType === "video" || messageType.includes("video")) return "video";
+  if (mediaType === "audio" || mediaType === "ptt" || mediaType === "myaudio" || messageType.includes("audio")) {
+    return "audio";
+  }
+  if (mediaType === "document" || messageType.includes("document")) return "documento";
+  if (mediaType === "sticker" || messageType.includes("sticker")) return "sticker";
+  if (messageType.includes("contact")) return "contato";
+  if (messageType.includes("location")) return "localizacao";
+  if (type === "media") return "outro";
+
   if (String(text ?? "").trim()) {
     const msg = item?.message ?? item?.data?.message ?? {};
     if (msg.imageMessage) return "imagem";
@@ -77,32 +98,45 @@ export function formatMensagemConteudo(texto, tipo) {
   return TIPO_LABELS[tipo] ?? TIPO_LABELS.outro;
 }
 
-async function resolveMediaForMensagem({ instanceName, item, tipo, contaId, cliqueId, messageId }) {
-  if (!isFetchableMediaTipo(tipo) || !isS3Configured() || !instanceName || !messageId) {
-    return { mediaUrl: null, mediaMime: null, mediaNome: extractMediaFileNameFromItem(item) };
+async function resolveMediaForMensagem({ tokenInstancia, item, tipo, contaId, cliqueId, messageId }) {
+  const fileNameHint = extractMediaFileNameFromItem(item);
+
+  if (!isFetchableMediaTipo(tipo)) {
+    return { mediaUrl: null, mediaMime: null, mediaNome: fileNameHint };
+  }
+  if (!isS3Configured()) {
+    console.error("resolveMediaForMensagem: S3 não configurado — mídia não será exibida no chat");
+    return { mediaUrl: null, mediaMime: null, mediaNome: fileNameHint };
+  }
+  if (!tokenInstancia) {
+    console.error("resolveMediaForMensagem: token da instância ausente — mídia não baixada");
+    return { mediaUrl: null, mediaMime: null, mediaNome: fileNameHint };
+  }
+  if (!messageId) {
+    console.error("resolveMediaForMensagem: message_id ausente — mídia não baixada");
+    return { mediaUrl: null, mediaMime: null, mediaNome: fileNameHint };
   }
 
-  const media = await fetchMediaFromEvolution(instanceName, item, {
-    convertToMp4: tipo === "video",
-  });
+  const media = await fetchMediaFromEvolution(tokenInstancia, item);
 
   if (!media) {
-    return { mediaUrl: null, mediaMime: null, mediaNome: extractMediaFileNameFromItem(item) };
+    return { mediaUrl: null, mediaMime: null, mediaNome: fileNameHint };
   }
 
-  const ext = extensionFromMime(media.mime, tipo === "sticker" ? "webp" : "bin");
+  const mime = normalizeMediaMime(media.mime, tipo);
+  const ext = extensionFromMime(mime, tipo === "sticker" ? "webp" : tipo === "audio" ? "ogg" : "bin");
   const key = buildMensagemMediaKey({ contaId, cliqueId, messageId, ext });
 
   try {
-    const mediaUrl = await uploadToS3(key, media.buffer, media.mime);
+    const mediaUrl = await uploadToS3(key, media.buffer, mime);
     return {
       mediaUrl,
-      mediaMime: media.mime,
-      mediaNome: media.fileName ?? extractMediaFileNameFromItem(item),
+      mediaMime: mime,
+      mediaNome: media.fileName ?? fileNameHint,
     };
   } catch (err) {
     console.error("resolveMediaForMensagem:", err?.message);
-    return { mediaUrl: null, mediaMime: media.mime, mediaNome: media.fileName };
+    return { mediaUrl: null, mediaMime: mime, mediaNome: media.fileName ?? fileNameHint };
   }
 }
 
@@ -111,7 +145,7 @@ async function resolveMediaForMensagem({ instanceName, item, tipo, contaId, cliq
  */
 export async function recordLeadMensagem(
   supabase,
-  { contaId, cliqueId, instanciaId, fromMe, item, text, instanceName }
+  { contaId, cliqueId, instanciaId, fromMe, item, text, instanceName, tokenInstancia }
 ) {
   if (!contaId || !cliqueId) return;
 
@@ -120,7 +154,7 @@ export async function recordLeadMensagem(
   const remoteJid = extractSenderJid(item);
 
   const { mediaUrl, mediaMime, mediaNome } = await resolveMediaForMensagem({
-    instanceName,
+    tokenInstancia,
     item,
     tipo,
     contaId,

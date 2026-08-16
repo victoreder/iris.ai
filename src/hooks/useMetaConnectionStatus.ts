@@ -16,11 +16,11 @@ export function useMetaConnectionStatus() {
     setLoading(true);
     const { data } = await supabase
       .from("leads_config")
-      .select("meta_access_token")
+      .select("meta_conectado")
       .eq("conta_id", contaAtiva.id)
       .maybeSingle();
 
-    setConnected(Boolean(String(data?.meta_access_token ?? "").trim()));
+    setConnected(Boolean(data?.meta_conectado));
     setLoading(false);
   }, [contaAtiva?.id]);
 

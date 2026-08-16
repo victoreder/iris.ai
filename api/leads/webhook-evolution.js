@@ -3,11 +3,13 @@ import {
   extractMessageTextFromWebhookItem,
   extractSenderJid,
   phoneFromWebhookItem,
+  extractPhoneFromEvolutionData,
 } from "../_lib/evolutionLeads.js";
 import {
   extractEvolutionMessages,
   isJornadaWebhookMessage,
   isOutgoingFromInstance,
+  isConnectionEvent,
   resolveCliqueFromMessage,
   createDirectWhatsAppLead,
   summarizeWebhookMessage,
@@ -28,7 +30,7 @@ import { recordEtapaAlterada, recordLeadNovo } from "../_lib/leadEventos.js";
 import { ensureFirstOrigem, resolveEffectiveLead } from "../_lib/leadOrigens.js";
 import { recordLeadMensagem, markMensagemDisparouEtapa, extractMessageIdFromWebhookItem } from "../_lib/leadMensagens.js";
 
-export const config = { api: { bodyParser: { sizeLimit: "512kb" } } };
+export const config = { api: { bodyParser: { sizeLimit: "4mb" } } };
 
 async function validateKnownInstance(supabase, instanceName) {
   const name = String(instanceName ?? "").trim();
@@ -36,7 +38,7 @@ async function validateKnownInstance(supabase, instanceName) {
 
   const { data, error } = await supabase
     .from("leads_instancias_whatsapp")
-    .select("id, instance_name, nome")
+    .select("id, instance_name, nome, token_instancia")
     .eq("instance_name", name)
     .maybeSingle();
 
@@ -172,7 +174,7 @@ function resolveInstanciaId(clique) {
   return clique?.instancia_id ?? clique?.leads_links?.instancia_id ?? null;
 }
 
-async function persistLeadMensagem(supabase, { item, clique, trackingId, instanciaId, isOutgoing, text, instanceName }) {
+async function persistLeadMensagem(supabase, { item, clique, trackingId, instanciaId, isOutgoing, text, instanceName, tokenInstancia }) {
   if (!clique?.conta_id || !trackingId) return;
   await recordLeadMensagem(supabase, {
     contaId: clique.conta_id,
@@ -182,6 +184,7 @@ async function persistLeadMensagem(supabase, { item, clique, trackingId, instanc
     item,
     text: text ?? "",
     instanceName,
+    tokenInstancia,
   });
 }
 
@@ -227,6 +230,43 @@ export default async function handler(req, res) {
         detalhes: instanceCheck,
       });
       return res.status(200).json({ ok: true, ignored: true, ...instanceCheck });
+    }
+
+    if (isConnectionEvent(event)) {
+      const telefone =
+        extractPhoneFromEvolutionData(body) ||
+        extractPhoneFromEvolutionData({ owner: body?.owner }) ||
+        null;
+      const rawStatus = String(
+        body?.status ?? body?.data?.status ?? body?.instance?.status ?? ""
+      ).toLowerCase();
+      let status = "conectando";
+      if (rawStatus === "connected" || rawStatus === "open") status = "conectado";
+      else if (rawStatus === "disconnected" || rawStatus === "hibernated" || rawStatus === "close") {
+        status = "desconectado";
+      } else if (rawStatus === "connecting") status = "conectando";
+      else if (telefone) status = "conectado";
+
+      const updates = {
+        status,
+        updated_at: new Date().toISOString(),
+      };
+      if (telefone) updates.telefone = String(telefone).replace(/\D/g, "");
+
+      await supabase
+        .from("leads_instancias_whatsapp")
+        .update(updates)
+        .eq("id", instanceCheck.instancia.id);
+
+      await logLeadsEvent({
+        supabase,
+        tipo: "webhook",
+        nivel: "sucesso",
+        mensagem: `Conexão atualizada: ${status}`,
+        instanceName: instance,
+        detalhes: { status, telefone, rawStatus },
+      });
+      return res.status(200).json({ ok: true, connection: true, status, telefone });
     }
 
     if (!shouldProcessEvent(event)) {
@@ -336,6 +376,7 @@ export default async function handler(req, res) {
         isOutgoing,
         text,
         instanceName: instance,
+        tokenInstancia: instanceCheck.instancia?.token_instancia,
       });
 
       // Entrada do lead — conversão na primeira mensagem

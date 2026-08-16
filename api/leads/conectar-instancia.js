@@ -2,6 +2,7 @@ import { getSupabase } from "../_lib.js";
 import { requireContaAuth } from "../_lib/auth.js";
 import { corsLeads } from "../_lib/leadsUtils.js";
 import { createQrShareToken, fetchFreshQrcode } from "../_lib/qrShare.js";
+import { ensureUazapiInstance } from "../_lib/evolutionLeads.js";
 
 export default async function handler(req, res) {
   corsLeads(res);
@@ -22,7 +23,7 @@ export default async function handler(req, res) {
     const supabase = getSupabase();
     const { data: inst, error: errInst } = await supabase
       .from("leads_instancias_whatsapp")
-      .select("id, instance_name, status")
+      .select("*")
       .eq("id", instanciaId)
       .eq("conta_id", auth.contaId)
       .maybeSingle();
@@ -31,7 +32,8 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: "Instância não encontrada." });
     }
 
-    const qrcode = await fetchFreshQrcode(inst.instance_name);
+    const ready = await ensureUazapiInstance(supabase, inst);
+    const qrcode = await fetchFreshQrcode(ready.token_instancia);
 
     await supabase
       .from("leads_instancias_whatsapp")

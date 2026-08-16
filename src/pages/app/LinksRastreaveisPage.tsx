@@ -29,6 +29,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { LeadsInstanciaWhatsapp, LeadsLink } from "@/types/database";
+import { LEADS_INSTANCIA_COLUNAS } from "@/types/database";
 
 interface LinkForm {
   nome: string;
@@ -72,7 +73,7 @@ export function LinksRastreaveisPage() {
         .order("created_at", { ascending: false }),
       supabase
         .from("leads_instancias_whatsapp")
-        .select("*")
+        .select(LEADS_INSTANCIA_COLUNAS)
         .eq("conta_id", contaAtiva.id)
         .order("nome"),
     ]);

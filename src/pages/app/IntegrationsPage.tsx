@@ -24,7 +24,7 @@ export function IntegrationsPage() {
     setLoading(true);
     const { data } = await supabase
       .from("leads_config")
-      .select("id, conta_id, meta_pixel_id, meta_access_token, meta_test_event_code, evento_padrao, updated_at")
+      .select("id, conta_id, meta_pixel_id, meta_conectado, meta_test_event_code, evento_padrao, updated_at")
       .eq("conta_id", contaAtiva.id)
       .maybeSingle();
 
@@ -32,7 +32,7 @@ export function IntegrationsPage() {
     setConfig(cfg);
     if (cfg) {
       setPixelId(cfg.meta_pixel_id ?? "");
-      setAccessToken(cfg.meta_access_token ?? "");
+      setAccessToken("");
       setTestCode(cfg.meta_test_event_code ?? "");
     }
     setLoading(false);
@@ -56,7 +56,7 @@ export function IntegrationsPage() {
         "/api/leads/salvar-config-meta",
         {
           metaPixelId: pixelId.trim(),
-          metaAccessToken: accessToken.trim(),
+          ...(accessToken.trim() ? { metaAccessToken: accessToken.trim() } : {}),
           metaTestEventCode: testCode.trim() || null,
         },
         contaAtiva.id
@@ -113,7 +113,11 @@ export function IntegrationsPage() {
               value={accessToken}
               onChange={(e) => setAccessToken(e.target.value)}
               disabled={!isAdmin}
-              placeholder="Token da API de Conversões"
+              placeholder={
+                config?.meta_conectado
+                  ? "Token já configurado — preencha só para substituir"
+                  : "Token da API de Conversões"
+              }
             />
           </div>
           <div className="space-y-1">

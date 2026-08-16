@@ -14,11 +14,6 @@ import {
 import { ensureContatoInicialEtapa } from "../_lib/leadsJornada.js";
 import { assertCanCreateWhatsApp } from "../_lib/planoLimites.js";
 
-function isEvolutionNameTakenError(err) {
-  const msg = String(err?.message ?? "").toLowerCase();
-  return err?.status === 403 && msg.includes("already in use");
-}
-
 export const config = { api: { bodyParser: { sizeLimit: "64kb" } } };
 
 export default async function handler(req, res) {
@@ -47,17 +42,12 @@ export default async function handler(req, res) {
     await assertCanCreateWhatsApp(supabase, auth.contaId);
     const instanceName = await ensureUniqueInstanceName(supabase, baseInstanceName);
 
-    try {
-      await evolutionCreateInstance(instanceName);
-    } catch (e) {
-      if (!isEvolutionNameTakenError(e)) throw e;
-      console.warn("criar-instancia: reutilizando instância existente na Evolution:", instanceName);
-    }
+    const created = await evolutionCreateInstance(instanceName);
 
     let webhookConfigurado = false;
     let webhookErro = null;
     try {
-      await evolutionSetWebhook(instanceName);
+      await evolutionSetWebhook(created.token);
       webhookConfigurado = true;
     } catch (e) {
       webhookErro = e?.message ?? "Falha ao configurar webhook.";
@@ -70,6 +60,8 @@ export default async function handler(req, res) {
         conta_id: auth.contaId,
         nome: nomeTrim,
         instance_name: instanceName,
+        token_instancia: created.token,
+        id_externo: created.id ? String(created.id) : null,
         status: "conectando",
         webhook_configurado: webhookConfigurado,
         webhook_erro: webhookErro,
@@ -93,12 +85,15 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       success: true,
-      instancia: row,
+      instancia: {
+        ...row,
+        token_instancia: undefined,
+      },
       webhookUrl,
     });
   } catch (err) {
     console.error("criar-instancia:", err);
-    const status = err?.statusCode && err.statusCode >= 400 ? err.statusCode : 500;
+    const status = err?.status && err.status >= 400 ? err.status : 500;
     return res.status(status).json({ error: err?.message ?? "Erro interno." });
   }
 }

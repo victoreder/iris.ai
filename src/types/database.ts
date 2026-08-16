@@ -47,11 +47,15 @@ export interface LeadsConfig {
   id: string;
   conta_id: string;
   meta_pixel_id: string | null;
-  meta_access_token: string | null;
+  meta_access_token?: string | null;
+  meta_conectado?: boolean;
   meta_test_event_code: string | null;
   evento_padrao: string;
   updated_at: string;
 }
+
+export const LEADS_INSTANCIA_COLUNAS =
+  "id, conta_id, nome, instance_name, telefone, status, webhook_configurado, webhook_erro, created_at, updated_at, id_externo";
 
 export interface LeadsInstanciaWhatsapp {
   id: string;
@@ -64,6 +68,8 @@ export interface LeadsInstanciaWhatsapp {
   webhook_erro: string | null;
   created_at: string;
   updated_at: string;
+  token_instancia?: string | null;
+  id_externo?: string | null;
 }
 
 export interface LeadsLink {

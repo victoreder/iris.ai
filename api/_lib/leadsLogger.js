@@ -49,7 +49,20 @@ export function sanitizeForLog(text, max = 500) {
   return s.length > max ? `${s.slice(0, max)}…` : s;
 }
 
-const LOG_SKIP_KEYS = new Set(["base64"]);
+const LOG_SKIP_KEYS = new Set([
+  "base64",
+  "token",
+  "token_instancia",
+  "JPEGThumbnail",
+  "mediaKey",
+  "fileEncSHA256",
+  "fileSHA256",
+  "scansSidecar",
+  "firstScanSidecar",
+  "waveform",
+  "streamingSidecar",
+  "URL",
+]);
 
 /**
  * Serializa payload do webhook para log (omite base64, limita strings grandes).
@@ -77,8 +90,7 @@ export function prepareValueForLog(value, depth = 0) {
   const out = {};
   for (const [key, val] of Object.entries(value)) {
     if (LOG_SKIP_KEYS.has(key)) {
-      const len = typeof val === "string" ? val.length : 0;
-      out[key] = len > 0 ? `[base64 omitido, ${len} chars]` : val;
+      out[key] = `[omitido]`;
       continue;
     }
     out[key] = prepareValueForLog(val, depth + 1);

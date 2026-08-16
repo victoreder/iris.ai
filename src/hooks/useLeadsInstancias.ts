@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useConta } from "@/contexts/ContaContext";
 import type { LeadsInstanciaWhatsapp } from "@/types/database";
+import { LEADS_INSTANCIA_COLUNAS } from "@/types/database";
 
 export function useLeadsInstancias(onlyConnected = true) {
   const { contaAtiva } = useConta();
@@ -20,7 +21,7 @@ export function useLeadsInstancias(onlyConnected = true) {
 
     let q = supabase
       .from("leads_instancias_whatsapp")
-      .select("*")
+      .select(LEADS_INSTANCIA_COLUNAS)
       .eq("conta_id", contaAtiva.id)
       .order("nome");
 

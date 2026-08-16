@@ -1,6 +1,6 @@
 import { getSupabase } from "../_lib.js";
 import { requireContaAuth } from "../_lib/auth.js";
-import { resolveInstancePhone } from "../_lib/evolutionLeads.js";
+import { hasUazapiToken, resolveInstancePhone } from "../_lib/evolutionLeads.js";
 import { corsLeads } from "../_lib/leadsUtils.js";
 
 export default async function handler(req, res) {
@@ -31,17 +31,35 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: "Instância não encontrada." });
     }
 
-    const { connected, state, telefone: telefoneEvo } = await resolveInstancePhone(
-      inst.instance_name
+    if (!hasUazapiToken(inst)) {
+      await supabase
+        .from("leads_instancias_whatsapp")
+        .update({
+          status: "desconectado",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", instanciaId);
+
+      return res.status(200).json({
+        success: true,
+        status: "desconectado",
+        state: "",
+        telefone: null,
+        connected: false,
+      });
+    }
+
+    const { connected, state, statusIris, telefone: telefoneUaz, qrcode } = await resolveInstancePhone(
+      inst.token_instancia
     );
 
-    const telefone = telefoneEvo || inst.telefone || null;
-    const status = connected && telefone ? "conectado" : connected ? "conectando" : "conectando";
+    const telefone = telefoneUaz || null;
+    const status = telefone ? "conectado" : statusIris;
 
     await supabase
       .from("leads_instancias_whatsapp")
       .update({
-        status: telefone ? "conectado" : status,
+        status,
         telefone: telefone ? String(telefone).replace(/\D/g, "") : inst.telefone,
         updated_at: new Date().toISOString(),
       })
@@ -49,10 +67,11 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       success: true,
-      status: telefone ? "conectado" : status,
+      status,
       state: String(state),
       telefone: telefone || null,
       connected: Boolean(telefone) || connected,
+      qrcode: telefone ? null : qrcode,
     });
   } catch (err) {
     console.error("status-instancia:", err);

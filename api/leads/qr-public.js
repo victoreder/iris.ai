@@ -1,6 +1,7 @@
 import { getSupabase } from "../_lib.js";
 import { corsLeads } from "../_lib/leadsUtils.js";
 import { fetchFreshQrcode, resolveQrShareToken } from "../_lib/qrShare.js";
+import { ensureUazapiInstance } from "../_lib/evolutionLeads.js";
 
 export default async function handler(req, res) {
   corsLeads(res);
@@ -28,7 +29,7 @@ export default async function handler(req, res) {
 
     const { instancia, empresaNome } = resolved;
 
-    if (instancia.status === "conectado" || instancia.telefone) {
+    if (instancia.status === "conectado") {
       return res.status(200).json({
         success: true,
         alreadyConnected: true,
@@ -37,7 +38,8 @@ export default async function handler(req, res) {
       });
     }
 
-    const qrcode = await fetchFreshQrcode(instancia.instance_name);
+    const ready = await ensureUazapiInstance(supabase, instancia);
+    const qrcode = await fetchFreshQrcode(ready.token_instancia);
 
     if (!qrcode) {
       return res.status(502).json({ error: "Não foi possível gerar o QR Code. Tente novamente em instantes." });
