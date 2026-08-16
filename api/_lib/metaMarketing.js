@@ -10,7 +10,14 @@ async function graphGet(path, accessToken, params = {}) {
   const res = await fetch(`https://graph.facebook.com/${META_GRAPH_VERSION}${path}?${qs}`);
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(body?.error?.message || `Meta API HTTP ${res.status}`);
+    const code = body?.error?.code;
+    const message = body?.error?.message || `Meta API HTTP ${res.status}`;
+    if (code === 200 || /missing permissions/i.test(String(message))) {
+      throw new Error(
+        "Token da Meta sem permissão para contas de anúncio. Desconecte e conecte de novo em Conectar Meta."
+      );
+    }
+    throw new Error(message);
   }
   return body;
 }

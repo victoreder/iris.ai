@@ -106,7 +106,7 @@ export function buildMetaOAuthUrl(contaId: string, returnTo: string): string {
   if (configId) {
     params.set("config_id", configId);
   } else {
-    params.set("scope", "ads_read");
+    params.set("scope", "ads_read,ads_management,business_management");
   }
 
   return `https://www.facebook.com/${META_OAUTH_VERSION}/dialog/oauth?${params.toString()}`;
