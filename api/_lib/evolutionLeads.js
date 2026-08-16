@@ -132,7 +132,7 @@ export async function evolutionConnectInstance(token) {
   return uazapiFetch("/instance/connect", {
     token,
     method: "POST",
-    body: {},
+    body: { systemName: "Viziom" },
   });
 }
 
