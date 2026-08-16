@@ -6,7 +6,7 @@ export function leadPhoneKey(phone: string | null | undefined): string {
   return digits || "";
 }
 
-/** Leads convertidos canônicos: exclui mesclados e deduplica por telefone. */
+/** Leads convertidos canônicos: exclui mesclados e deduplica por telefone + WhatsApp. */
 export function getCanonicalConvertedLeads(cliques: LeadsClique[]): LeadsClique[] {
   const converted = cliques.filter(
     (c) => c.status === "convertido" && !c.clique_principal_id
@@ -15,7 +15,9 @@ export function getCanonicalConvertedLeads(cliques: LeadsClique[]): LeadsClique[
   const byPhone = new Map<string, LeadsClique>();
 
   for (const lead of converted) {
-    const key = leadPhoneKey(lead.telefone_lead) || lead.id;
+    const phone = leadPhoneKey(lead.telefone_lead);
+    const instanciaId = lead.instancia_id ?? lead.leads_links?.instancia_id ?? "";
+    const key = phone ? `${instanciaId}:${phone}` : lead.id;
     const existing = byPhone.get(key);
     if (!existing) {
       byPhone.set(key, lead);

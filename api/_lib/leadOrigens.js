@@ -63,11 +63,15 @@ export async function fetchCliqueWithLinks(supabase, cliqueId) {
   return data;
 }
 
+function cliqueInstanciaId(clique) {
+  return clique?.instancia_id ?? clique?.leads_links?.instancia_id ?? null;
+}
+
 /**
- * Lead convertido principal pelo telefone (conta inteira).
+ * Lead convertido principal pelo telefone na mesma instância WhatsApp.
  */
-export async function findPrincipalLeadByPhone(supabase, { contaId, telefone, excludeCliqueId }) {
-  if (!contaId || !telefone?.trim()) return null;
+export async function findPrincipalLeadByPhone(supabase, { contaId, telefone, excludeCliqueId, instanciaId }) {
+  if (!contaId || !telefone?.trim() || !instanciaId) return null;
 
   const { data: candidatos, error } = await supabase
     .from("leads_cliques")
@@ -86,6 +90,7 @@ export async function findPrincipalLeadByPhone(supabase, { contaId, telefone, ex
 
   for (const c of candidatos ?? []) {
     if (excludeCliqueId && c.id === excludeCliqueId) continue;
+    if (cliqueInstanciaId(c) !== instanciaId) continue;
     if (phonesMatch(telefone, c.telefone_lead)) return c;
   }
 
@@ -184,6 +189,7 @@ export async function resolveEffectiveLead(supabase, { clique, trackingId, telef
     contaId: clique.conta_id,
     telefone,
     excludeCliqueId: trackingId,
+    instanciaId: cliqueInstanciaId(clique),
   });
 
   if (!principal || principal.id === trackingId) {

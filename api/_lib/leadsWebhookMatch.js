@@ -322,7 +322,11 @@ export async function resolveCliqueFromMessage(supabase, { text, instanceName, t
   if (trackingId) {
     const clique = await fetchCliqueById(supabase, trackingId);
     if (clique) {
-      return { clique, trackingId, matchMethod: "invisible_id" };
+      const ctx = instanceName ? await getInstanceContext(supabase, instanceName) : null;
+      const cliqueInst = clique.instancia_id ?? clique.leads_links?.instancia_id ?? null;
+      if (!ctx?.instanciaId || !cliqueInst || cliqueInst === ctx.instanciaId) {
+        return { clique, trackingId, matchMethod: "invisible_id" };
+      }
     }
     trackingId = null;
   }
