@@ -191,6 +191,10 @@ async function persistLeadMensagem(supabase, { item, clique, trackingId, instanc
 export default async function handler(req, res) {
   corsLeads(res);
   if (req.method === "OPTIONS") return res.status(200).end();
+  // UAZAPI valida a URL com GET (user-agent `got`). 405 fazia o webhook não disparar POST.
+  if (req.method === "GET" || req.method === "HEAD") {
+    return res.status(200).json({ ok: true });
+  }
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Método não permitido." });
   }

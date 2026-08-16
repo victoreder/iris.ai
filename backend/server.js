@@ -57,6 +57,7 @@ const get = (path, handler) => app.get(path, wrapApiHandler(handler));
 post("/api/leads/registrar-clique", leadsRegistrarCliqueHandler);
 get("/api/leads/redirecionar", leadsRedirecionarHandler);
 post("/api/leads/webhook-evolution", leadsWebhookEvolutionHandler);
+get("/api/leads/webhook-evolution", leadsWebhookEvolutionHandler);
 post("/api/leads/criar-link", leadsCriarLinkHandler);
 post("/api/leads/atualizar-link", leadsAtualizarLinkHandler);
 post("/api/leads/excluir-link", leadsExcluirLinkHandler);
