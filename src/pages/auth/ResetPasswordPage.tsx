@@ -5,14 +5,24 @@ import { AuthShell } from "@/components/auth/AuthShell";
 import { MIN_PASSWORD_LENGTH } from "@/lib/authInvite";
 import {
   clearPasswordRecoveryParamsFromUrl,
+  establishPasswordRecoverySession,
   isPasswordRecoveryFromUrl,
 } from "@/lib/authPasswordReset";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 
+function mensagemErroRedefinicao(err: unknown): string {
+  const msg = err instanceof Error ? err.message : "";
+  if (/session missing/i.test(msg)) {
+    return "Não foi possível validar o link de recuperação. Solicite um novo e-mail.";
+  }
+  return msg || "Erro ao redefinir senha.";
+}
+
 export function ResetPasswordPage() {
   const navigate = useNavigate();
+  const [fromRecoveryLink] = useState(() => isPasswordRecoveryFromUrl());
   const [checking, setChecking] = useState(true);
   const [recoveryReady, setRecoveryReady] = useState(false);
   const [novaSenha, setNovaSenha] = useState("");
@@ -21,37 +31,40 @@ export function ResetPasswordPage() {
 
   useEffect(() => {
     let cancelled = false;
+    let finished = false;
 
     const finishCheck = (ready: boolean) => {
-      if (cancelled) return;
+      if (cancelled || finished) return;
+      finished = true;
       setRecoveryReady(ready);
       setChecking(false);
       if (ready) clearPasswordRecoveryParamsFromUrl();
     };
 
-    if (isPasswordRecoveryFromUrl()) {
-      finishCheck(true);
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY" && session) {
         finishCheck(true);
       }
     });
 
+    void (async () => {
+      const established = await establishPasswordRecoverySession();
+      if (cancelled) return;
+      if (established && fromRecoveryLink) {
+        finishCheck(true);
+      }
+    })();
+
     const timeout = window.setTimeout(() => {
       finishCheck(false);
-    }, 8000);
+    }, 10000);
 
     return () => {
       cancelled = true;
       sub.subscription.unsubscribe();
       window.clearTimeout(timeout);
     };
-  }, []);
+  }, [fromRecoveryLink]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,6 +79,13 @@ export function ResetPasswordPage() {
 
     setSubmitting(true);
     try {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        setRecoveryReady(false);
+        toast.error("Sessão de recuperação expirada. Solicite um novo link.");
+        return;
+      }
+
       const { error } = await supabase.auth.updateUser({ password: novaSenha });
       if (error) throw error;
 
@@ -73,7 +93,7 @@ export function ResetPasswordPage() {
       toast.success("Senha redefinida! Faça login com a nova senha.");
       navigate("/login", { replace: true });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erro ao redefinir senha.");
+      toast.error(mensagemErroRedefinicao(err));
     } finally {
       setSubmitting(false);
     }
