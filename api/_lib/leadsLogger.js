@@ -1,4 +1,5 @@
 import { getSupabase } from "../_lib.js";
+import { findLeadsInstancia } from "./leadsWebhookMatch.js";
 
 /**
  * @param {object} params
@@ -24,8 +25,13 @@ export async function logLeadsEvent({
 }) {
   try {
     const supabase = existingSupabase ?? getSupabase();
+    let resolvedContaId = contaId || null;
+    if (!resolvedContaId && instanceName) {
+      const inst = await findLeadsInstancia(supabase, { instanceName });
+      resolvedContaId = inst?.conta_id ?? null;
+    }
     const row = {
-      conta_id: contaId || null,
+      conta_id: resolvedContaId,
       tipo,
       nivel,
       mensagem: String(mensagem ?? "").slice(0, 2000),
@@ -35,7 +41,9 @@ export async function logLeadsEvent({
       instance_name: instanceName ? String(instanceName).trim() : null,
     };
     const { error } = await supabase.from("leads_logs").insert(row);
-    if (error) console.error("logLeadsEvent:", error.message);
+    if (error) {
+      console.error("logLeadsEvent:", error.message, error.code, error.details, error.hint);
+    }
   } catch (e) {
     console.error("logLeadsEvent:", e?.message);
   }

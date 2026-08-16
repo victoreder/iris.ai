@@ -7,6 +7,7 @@ import {
 } from "../_lib/evolutionLeads.js";
 import {
   extractEvolutionMessages,
+  findLeadsInstancia,
   isJornadaWebhookMessage,
   isOutgoingFromInstance,
   isConnectionEvent,
@@ -32,17 +33,13 @@ import { recordLeadMensagem, markMensagemDisparouEtapa, extractMessageIdFromWebh
 
 export const config = { api: { bodyParser: { sizeLimit: "4mb" } } };
 
-async function validateKnownInstance(supabase, instanceName) {
+async function validateKnownInstance(supabase, instanceName, token) {
   const name = String(instanceName ?? "").trim();
-  if (!name) return { ok: false, reason: "instance_ausente" };
+  const tok = String(token ?? "").trim();
+  if (!name && !tok) return { ok: false, reason: "instance_ausente" };
 
-  const { data, error } = await supabase
-    .from("leads_instancias_whatsapp")
-    .select("id, instance_name, nome, token_instancia")
-    .eq("instance_name", name)
-    .maybeSingle();
-
-  if (error || !data) return { ok: false, reason: "instance_desconhecida", instanceName: name };
+  const data = await findLeadsInstancia(supabase, { instanceName: name, token: tok });
+  if (!data) return { ok: false, reason: "instance_desconhecida", instanceName: name };
   return { ok: true, instancia: data };
 }
 
@@ -188,6 +185,27 @@ async function persistLeadMensagem(supabase, { item, clique, trackingId, instanc
   });
 }
 
+function parseWebhookBody(req) {
+  const raw = req.body;
+  if (raw == null || raw === "") return {};
+  if (typeof raw === "string") {
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return {};
+    }
+  }
+  if (typeof Buffer !== "undefined" && Buffer.isBuffer(raw)) {
+    try {
+      return JSON.parse(raw.toString("utf8"));
+    } catch {
+      return {};
+    }
+  }
+  if (typeof raw === "object") return raw;
+  return {};
+}
+
 export default async function handler(req, res) {
   corsLeads(res);
   if (req.method === "OPTIONS") return res.status(200).end();
@@ -202,8 +220,27 @@ export default async function handler(req, res) {
   const supabase = getSupabase();
 
   try {
-    const body = req.body || {};
-    const { event, instance, messages } = extractEvolutionMessages(body);
+    const body = parseWebhookBody(req);
+    const extracted = extractEvolutionMessages(body);
+    const event = extracted.event;
+    const messages = extracted.messages;
+    const instanceCheck = await validateKnownInstance(
+      supabase,
+      extracted.instance,
+      body?.token
+    );
+    const instance = instanceCheck.instancia?.instance_name || extracted.instance;
+    const contaId = instanceCheck.instancia?.conta_id ?? null;
+
+    console.info("webhook-evolution", {
+      event: event || null,
+      instance: instance || null,
+      instanceRecebido: extracted.instance || null,
+      messagesCount: messages.length,
+      bodyKeys: Object.keys(body),
+      lookup: instanceCheck.ok ? "ok" : instanceCheck.reason,
+      contaId,
+    });
 
     await logLeadsEvent({
       supabase,
@@ -211,18 +248,19 @@ export default async function handler(req, res) {
       nivel: "info",
       mensagem: `Webhook recebido (${event || "sem evento"})`,
       instanceName: instance,
+      contaId,
       detalhes: {
         event: event || null,
         messagesCount: messages.length,
         instance: instance || null,
+        instanceRecebido: extracted.instance || null,
+        lookup: instanceCheck.ok ? "ok" : instanceCheck.reason,
         mensagens: messages.map((m) =>
           summarizeWebhookMessage(m, extractMessageTextFromWebhookItem)
         ),
         payload: prepareWebhookBodyForLog(body),
       },
     });
-
-    const instanceCheck = await validateKnownInstance(supabase, instance);
 
     if (!instanceCheck.ok) {
       await logLeadsEvent({
@@ -231,9 +269,10 @@ export default async function handler(req, res) {
         nivel: "aviso",
         mensagem: `Webhook ignorado: ${instanceCheck.reason}`,
         instanceName: instance,
-        detalhes: instanceCheck,
+        contaId,
+        detalhes: { reason: instanceCheck.reason, instanceRecebido: extracted.instance || null },
       });
-      return res.status(200).json({ ok: true, ignored: true, ...instanceCheck });
+      return res.status(200).json({ ok: true, ignored: true, reason: instanceCheck.reason });
     }
 
     if (isConnectionEvent(event)) {

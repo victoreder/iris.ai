@@ -18,13 +18,25 @@ function attachChat(item, chat) {
 /**
  * Extrai lista de mensagens do payload UAZAPI (e fallback Evolution).
  */
+function pickInstanceName(body) {
+  const nested = body?.instance && typeof body.instance === "object" ? body.instance : null;
+  const candidates = [
+    body?.instanceName,
+    typeof body?.instance === "string" ? body.instance : null,
+    nested?.instanceName,
+    nested?.name,
+    nested?.id,
+  ];
+  for (const raw of candidates) {
+    const s = String(raw ?? "").trim();
+    if (s && s !== "[object Object]") return s;
+  }
+  return "";
+}
+
 export function extractEvolutionMessages(body) {
   const event = String(body?.EventType ?? body?.event ?? body?.type ?? "").toLowerCase();
-  const instance =
-    body?.instanceName ??
-    body?.instance ??
-    body?.instance?.instanceName ??
-    null;
+  const instance = pickInstanceName(body);
   const chat = body?.chat ?? null;
 
   const messages = [];
@@ -60,7 +72,11 @@ export function isConnectionEvent(event) {
 
 /** Direção da mensagem no payload UAZAPI / Evolution. */
 export function getWebhookMessageDirection(item) {
-  const root = item?.chatid || item?.fromMe != null ? item : item?.message ?? item?.data ?? item;
+  const uazRoot =
+    item?.chatid || item?.messageid || item?.fromMe === true || item?.fromMe === false
+      ? item
+      : null;
+  const root = uazRoot ?? (item?.key ? item : item?.message ?? item?.data ?? item);
   const chat = item?.chat ?? {};
   const chatid = String(root?.chatid ?? chat.wa_chatid ?? item?.chatid ?? item?.key?.remoteJid ?? "");
   if (root?.isGroup === true || chat.wa_isGroup === true) return "grupo";
@@ -118,12 +134,44 @@ export function summarizeWebhookMessage(item, extractText) {
 
 export { extractSenderJid } from "./evolutionLeads.js";
 
+const INSTANCIA_LOOKUP_SELECT =
+  "id, instance_name, nome, token_instancia, conta_id, id_externo";
+
+/** Resolve instância por nome, id_externo (UUID UAZAPI) ou token. */
+export async function findLeadsInstancia(supabase, { instanceName, token } = {}) {
+  const name = String(instanceName ?? "").trim();
+  const tok = String(token ?? "").trim();
+
+  if (name) {
+    const byName = await supabase
+      .from("leads_instancias_whatsapp")
+      .select(INSTANCIA_LOOKUP_SELECT)
+      .eq("instance_name", name)
+      .maybeSingle();
+    if (byName.data) return byName.data;
+
+    const byExterno = await supabase
+      .from("leads_instancias_whatsapp")
+      .select(INSTANCIA_LOOKUP_SELECT)
+      .eq("id_externo", name)
+      .maybeSingle();
+    if (byExterno.data) return byExterno.data;
+  }
+
+  if (tok) {
+    const byToken = await supabase
+      .from("leads_instancias_whatsapp")
+      .select(INSTANCIA_LOOKUP_SELECT)
+      .eq("token_instancia", tok)
+      .maybeSingle();
+    if (byToken.data) return byToken.data;
+  }
+
+  return null;
+}
+
 async function getInstanceContext(supabase, instanceName) {
-  const { data: inst } = await supabase
-    .from("leads_instancias_whatsapp")
-    .select("id, conta_id")
-    .eq("instance_name", String(instanceName).trim())
-    .maybeSingle();
+  const inst = await findLeadsInstancia(supabase, { instanceName });
 
   if (!inst?.id) return null;
 
