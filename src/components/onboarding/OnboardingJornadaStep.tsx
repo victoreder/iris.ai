@@ -51,6 +51,7 @@ export function OnboardingJornadaStep({
   const [form, setForm] = useState<EtapaForm>(emptyEtapa);
   const [keywordInput, setKeywordInput] = useState("");
   const [reordering, setReordering] = useState(false);
+  const [deleteEtapa, setDeleteEtapa] = useState<LeadsJornadaEtapa | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -194,6 +195,17 @@ export function OnboardingJornadaStep({
     }
   };
 
+  const confirmDelete = async () => {
+    if (!deleteEtapa) return;
+    const { error } = await supabase.from("leads_jornada_etapas").delete().eq("id", deleteEtapa.id);
+    if (error) toast.error(error.message);
+    else {
+      toast.success("Etapa excluída.");
+      setDeleteEtapa(null);
+      void load();
+    }
+  };
+
   if (instancias.length === 0) {
     return (
       <p className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
@@ -239,10 +251,10 @@ export function OnboardingJornadaStep({
         <JornadaFunnel
           etapas={etapasInstancia}
           canWrite
-          canDelete={false}
+          canDelete
           onCreate={openCreate}
           onEdit={openEditEtapa}
-          onDelete={() => {}}
+          onDelete={setDeleteEtapa}
           onReorder={(ordered) => void handleReorder(ordered)}
         />
       </div>
@@ -381,10 +393,38 @@ export function OnboardingJornadaStep({
             </div>
           </div>
           <DialogFooter>
+            {editing && !editing.primeiro_contato && (
+              <Button
+                variant="destructive"
+                className="mr-auto"
+                onClick={() => {
+                  setDialogOpen(false);
+                  setDeleteEtapa(editing);
+                }}
+              >
+                Excluir
+              </Button>
+            )}
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Cancelar
             </Button>
             <Button onClick={() => void saveEtapa()}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </DialogRoot>
+
+      <DialogRoot open={!!deleteEtapa} onOpenChange={(v) => !v && setDeleteEtapa(null)}>
+        <DialogContent
+          title="Excluir etapa"
+          description="Leads nesta etapa ficarão sem etapa atribuída."
+        >
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteEtapa(null)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={() => void confirmDelete()}>
+              Excluir
+            </Button>
           </DialogFooter>
         </DialogContent>
       </DialogRoot>

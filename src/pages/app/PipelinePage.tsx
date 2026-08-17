@@ -422,6 +422,18 @@ export function PipelinePage() {
             </div>
           </div>
           <DialogFooter>
+            {canDelete && editing && !editing.primeiro_contato && (
+              <Button
+                variant="destructive"
+                className="mr-auto"
+                onClick={() => {
+                  setDialogOpen(false);
+                  setDeleteEtapa(editing);
+                }}
+              >
+                Excluir
+              </Button>
+            )}
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Cancelar
             </Button>

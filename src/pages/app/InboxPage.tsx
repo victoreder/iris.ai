@@ -43,11 +43,17 @@ import {
   LEADS_UTM_FIELDS,
   LEADS_UTM_LABELS,
   matchesLeadsUtmFilters,
+  applyLeadsUtmFiltersToSearchParams,
   parseLeadsUtmFiltersFromSearch,
   setLeadsUtmFilterInSearchParams,
   stripLeadsUtmParams,
   type LeadsUtmField,
 } from "@/lib/leadsUtmFilters";
+import {
+  loadLeadsInboxFilters,
+  saveLeadsInboxFilters,
+  type LeadsInboxPeriod,
+} from "@/lib/leadsInboxFilters";
 import { LeadsUtmSearchSelect } from "@/components/leads/LeadsUtmSearchSelect";
 import {
   DEFAULT_LEADS_TABLE_COLUMNS,
@@ -60,14 +66,11 @@ import {
   getDateRangeFromPreset,
   aggregateLeadsByOrigin,
   isLeadInPeriod,
-  type DatePreset,
 } from "@/lib/leadsAnalytics";
 import { cn } from "@/lib/utils";
 import type { LeadsClique, LeadsJornadaEtapa, LeadsLink } from "@/types/database";
 
-type LeadsPeriod = Extract<DatePreset, "hoje" | "ultimos_7" | "ultimos_30" | "todo">;
-
-const PERIOD_LABELS: Record<LeadsPeriod, string> = {
+const PERIOD_LABELS: Record<LeadsInboxPeriod, string> = {
   hoje: "Hoje",
   ultimos_7: "7 dias",
   ultimos_30: "30 dias",
@@ -94,18 +97,19 @@ export function InboxPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { contaAtiva, canWrite } = useConta();
-  const { instancias } = useLeadsInstancias(true);
+  const { instancias, loading: instanciasLoading } = useLeadsInstancias(true);
   const [cliques, setCliques] = useState<LeadsClique[]>([]);
   const [links, setLinks] = useState<LeadsLink[]>([]);
   const [etapas, setEtapas] = useState<LeadsJornadaEtapa[]>([]);
   const [agendaItems, setAgendaItems] = useState<CrmAgendaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"lista" | "colunas" | "acoes">("lista");
-  const [period, setPeriod] = useState<LeadsPeriod>("ultimos_30");
+  const [period, setPeriod] = useState<LeadsInboxPeriod>("ultimos_30");
   const [instanciaFilter, setInstanciaFilter] = useState("all");
   const [linkFilter, setLinkFilter] = useState("all");
   const [telefoneFilter, setTelefoneFilter] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const skipFilterSaveRef = useRef(true);
   const [kanbanInstanciaId, setKanbanInstanciaId] = useState<string | null>(null);
   const [whatsappPickerOpen, setWhatsappPickerOpen] = useState(false);
   const [pickerSelection, setPickerSelection] = useState("");
@@ -135,6 +139,55 @@ export function InboxPage() {
     const saved = loadSavedLeadsTableColumns(contaAtiva.id);
     setTableColumns(saved ?? [...DEFAULT_LEADS_TABLE_COLUMNS]);
   }, [contaAtiva?.id]);
+
+  useEffect(() => {
+    if (!contaAtiva) return;
+    skipFilterSaveRef.current = true;
+    const saved = loadLeadsInboxFilters(contaAtiva.id);
+    if (saved) {
+      setPeriod(saved.period);
+      setInstanciaFilter(saved.instanciaFilter);
+      setLinkFilter(saved.linkFilter);
+      setTelefoneFilter(saved.telefoneFilter);
+    }
+
+    const urlUtm = parseLeadsUtmFiltersFromSearch(searchParams);
+    if (countActiveLeadsUtmFilters(urlUtm) === 0 && saved && countActiveLeadsUtmFilters(saved.utm) > 0) {
+      const next = applyLeadsUtmFiltersToSearchParams(searchParams, saved.utm);
+      if (next.toString() !== searchParams.toString()) {
+        setSearchParams(next, { replace: true });
+      }
+    }
+  }, [contaAtiva?.id]);
+
+  useEffect(() => {
+    if (!contaAtiva) return;
+    if (skipFilterSaveRef.current) {
+      skipFilterSaveRef.current = false;
+      return;
+    }
+    saveLeadsInboxFilters(contaAtiva.id, {
+      period,
+      instanciaFilter,
+      linkFilter,
+      telefoneFilter,
+      utm: utmFilters,
+    });
+  }, [contaAtiva?.id, period, instanciaFilter, linkFilter, telefoneFilter, utmFilters]);
+
+  useEffect(() => {
+    if (instanciasLoading || instanciaFilter === "all") return;
+    if (!instancias.some((i) => i.id === instanciaFilter)) {
+      setInstanciaFilter("all");
+    }
+  }, [instancias, instanciasLoading, instanciaFilter]);
+
+  useEffect(() => {
+    if (loading || linkFilter === "all") return;
+    if (!links.some((l) => l.id === linkFilter)) {
+      setLinkFilter("all");
+    }
+  }, [loading, links, linkFilter]);
 
   useEffect(() => {
     if (!filtersOpen) return;
@@ -353,10 +406,10 @@ export function InboxPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <Select
           value={period}
-          onChange={(e) => setPeriod(e.target.value as LeadsPeriod)}
+          onChange={(e) => setPeriod(e.target.value as LeadsInboxPeriod)}
           className="w-full sm:w-40"
         >
-          {(Object.keys(PERIOD_LABELS) as LeadsPeriod[]).map((key) => (
+          {(Object.keys(PERIOD_LABELS) as LeadsInboxPeriod[]).map((key) => (
             <option key={key} value={key}>
               {PERIOD_LABELS[key]}
             </option>

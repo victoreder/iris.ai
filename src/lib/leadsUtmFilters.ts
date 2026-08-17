@@ -102,6 +102,17 @@ export function setLeadsUtmFilterInSearchParams(
   return next;
 }
 
+export function applyLeadsUtmFiltersToSearchParams(
+  params: URLSearchParams,
+  filters: LeadsUtmFilters
+): URLSearchParams {
+  let next = stripLeadsUtmParams(params);
+  for (const field of LEADS_UTM_FIELDS) {
+    next = setLeadsUtmFilterInSearchParams(next, field, filters[field]);
+  }
+  return next;
+}
+
 export function collectUniqueUtmValues(cliques: LeadsClique[]): Record<LeadsUtmField, string[]> {
   const sets = Object.fromEntries(
     LEADS_UTM_FIELDS.map((f) => [f, new Set<string>()])
